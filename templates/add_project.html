@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Add Project - Mik Portfolio</title>
+
+
+    <!-- Google Font -->
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+
+    <!-- CSS -->
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+
+    <div class="dashboard">
+
+
+        <!-- =========================
+             SIDEBAR
+        ========================== -->
+
+        <aside class="sidebar">
+
+            <div class="sidebar-brand">
+                <h1>MIK</h1>
+                <span>PORTFOLIO</span>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/dashboard"><span>▦</span>Dashboard</a>
+                <a href="/dashboard#projects" class="active" aria-current="page"><span>▣</span>Projects</a>
+                <a href="/dashboard#messages"><span>✉</span>Messages</a>
+                <a href="/"><span>↗</span>View Site</a>
+            </nav>
+
+            <div class="sidebar-bottom">
+                <a href="/logout"><span>↪</span>Logout</a>
+            </div>
+
+        </aside>
+
+
+
+        <!-- =========================
+             MAIN CONTENT
+        ========================== -->
+
+        <main class="dashboard-content">
+
+
+            <header class="dashboard-header">
+                <div>
+                    <p class="dashboard-label">YOUR WORK</p>
+                    <h1>Add New Project</h1>
+                    <p class="dashboard-subtitle">Add a project to your portfolio.</p>
+                </div>
+            </header>
+
+
+
+            <!-- =========================
+                 PROJECT FORM
+            ========================== -->
+
+            <div class="dashboard-section project-editor-card">
+
+                {% if error %}
+                    <p class="form-error" role="alert">{{ error }}</p>
+                {% endif %}
+
+                <form
+                    method="POST"
+                    enctype="multipart/form-data"
+                >
+
+
+                    <!-- =========================
+                         PROJECT TITLE
+                    ========================== -->
+
+                    <label for="title">
+                        Project Title
+                    </label>
+
+                    <input
+                        type="text"
+                        id="title"
+                        name="title"
+                        placeholder="Example: Character Animation"
+                        maxlength="160"
+                        value="{{ form.get('title', '') }}"
+                        required
+                    >
+
+
+
+                    <!-- =========================
+                         DESCRIPTION
+                    ========================== -->
+
+                    <label for="description">
+                        Context / Description
+                    </label>
+
+                    <textarea
+                        id="description"
+                        name="description"
+                        placeholder="Write a short description about your project..."
+                        rows="6"
+                        maxlength="5000"
+                        required
+                    >{{ form.get('description', '') }}</textarea>
+
+
+
+                    <!-- =========================
+                         TECHNOLOGIES
+                    ========================== -->
+
+                    <label for="selected-technologies">
+                        Technologies
+                    </label>
+                    <p class="form-help">Choose any that apply, or add your own below.</p>
+
+
+
+                    <!-- =========================
+                         PROGRAMMING & WEB
+                    ========================== -->
+
+                    <div class="technology-category">
+
+                        <h3>
+                            Programming & Web
+                        </h3>
+
+
+                        <div class="technology-buttons">
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="HTML"
+                            >
+                                HTML
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="CSS"
+                            >
+                                CSS
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="JavaScript"
+                            >
+                                JavaScript
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Python"
+                            >
+                                Python
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Flask"
+                            >
+                                Flask
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Java"
+                            >
+                                Java
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="PHP"
+                            >
+                                PHP
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="MySQL"
+                            >
+                                MySQL
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="SQL"
+                            >
+                                SQL
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="C"
+                            >
+                                C
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="C++"
+                            >
+                                C++
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="C#"
+                            >
+                                C#
+                            </button>
+
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- =========================
+                         ART & DESIGN
+                    ========================== -->
+
+                    <div class="technology-category">
+
+                        <h3>
+                            Art & Design
+                        </h3>
+
+
+                        <div class="technology-buttons">
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="IbisPaint X"
+                            >
+                                IbisPaint X
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Canva"
+                            >
+                                Canva
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Adobe Photoshop"
+                            >
+                                Adobe Photoshop
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Adobe Illustrator"
+                            >
+                                Adobe Illustrator
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Figma"
+                            >
+                                Figma
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Krita"
+                            >
+                                Krita
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Clip Studio Paint"
+                            >
+                                Clip Studio Paint
+                            </button>
+
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- =========================
+                         ANIMATION & 3D
+                    ========================== -->
+
+                    <div class="technology-category">
+
+                        <h3>
+                            Animation & 3D
+                        </h3>
+
+
+                        <div class="technology-buttons">
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Blender"
+                            >
+                                Blender
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Adobe Animate"
+                            >
+                                Adobe Animate
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Toon Boom"
+                            >
+                                Toon Boom
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="After Effects"
+                            >
+                                After Effects
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Premiere Pro"
+                            >
+                                Premiere Pro
+                            </button>
+
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- =========================
+                         DEVELOPMENT TOOLS
+                    ========================== -->
+
+                    <div class="technology-category">
+
+                        <h3>
+                            Development Tools
+                        </h3>
+
+
+                        <div class="technology-buttons">
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="VS Code"
+                            >
+                                VS Code
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Git"
+                            >
+                                Git
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="GitHub"
+                            >
+                                GitHub
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="XAMPP"
+                            >
+                                XAMPP
+                            </button>
+
+
+                            <button
+                                type="button"
+                                class="technology-button"
+                                data-tech="Cisco Packet Tracer"
+                            >
+                                Cisco Packet Tracer
+                            </button>
+
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- =========================
+                         OTHER TECHNOLOGY
+                    ========================== -->
+
+                    <div class="technology-category">
+
+                        <h3>
+                            Other
+                        </h3>
+
+
+                        <div class="other-technology">
+
+
+                            <input
+                                type="text"
+                                id="other-technology-input"
+                                placeholder="Type a technology..."
+                            >
+
+
+                            <button
+                                type="button"
+                                id="add-technology-button"
+                            >
+                                Add
+                            </button>
+
+
+                        </div>
+
+
+                        <div
+                            class="technology-buttons"
+                            id="custom-technologies"
+                        >
+                        </div>
+
+
+                    </div>
+
+
+
+                    <!-- Hidden technology field -->
+
+                    <input
+                        type="hidden"
+                        name="technologies"
+                        id="selected-technologies"
+                        value="{{ form.get('technologies', '') }}"
+                    >
+
+
+
+                    <!-- =========================
+                         PROJECT DATE
+                    ========================== -->
+
+                    <label for="created_at">
+                        Project Date
+                    </label>
+
+
+                    <input
+                        type="date"
+                        id="created_at"
+                        name="created_at"
+                        value="{{ form.get('created_at', '') }}"
+                        required
+                    >
+
+
+
+                    <!-- =========================
+                         PROJECT MEDIA
+                    ========================== -->
+
+                    <label for="media">
+
+                        Project Media
+
+                        <span>
+                            (Optional)
+                        </span>
+
+                    </label>
+
+
+                    <!-- Custom File Button -->
+
+                    <div class="custom-file-upload">
+
+
+                        <label
+                            for="media"
+                            class="file-button"
+                        >
+                            📁 Choose Media
+                        </label>
+
+
+                        <input
+                            type="file"
+                            id="media"
+                            name="media"
+                            accept=".png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.mov,.pdf"
+                        >
+
+
+                        <span id="file-name">
+                            No file selected
+                        </span>
+
+
+                    </div>
+
+
+                    <p class="file-help">
+                        PNG, JPG, GIF, WebP, MP4, WebM, MOV, or PDF. Maximum file size: 16 MB.
+                    </p>
+
+
+
+                    <!-- =========================
+                         PROJECT LINK
+                    ========================== -->
+
+                    <label for="project_link">
+
+                        Project Link
+
+                        <span>
+                            (Optional)
+                        </span>
+
+                    </label>
+
+
+                    <input
+                        type="url"
+                        id="project_link"
+                        name="project_link"
+                        placeholder="https://example.com"
+                        maxlength="2048"
+                        value="{{ form.get('project_link', '') }}"
+                    >
+
+
+
+                    <!-- =========================
+                         FORM BUTTONS
+                    ========================== -->
+
+                    <div class="form-buttons">
+
+
+                        <a
+                            href="/dashboard"
+                            class="cancel-button"
+                        >
+                            Cancel
+                        </a>
+
+
+                        <button
+                            type="submit"
+                            class="save-button"
+                        >
+                            SAVE PROJECT
+                        </button>
+
+
+                    </div>
+
+
+                </form>
+
+            </div>
+
+        </main>
+
+    </div>
+
+
+
+    <!-- =========================
+         JAVASCRIPT
+    ========================== -->
+
+    <script>
+
+
+        // =========================
+        // TECHNOLOGY ELEMENTS
+        // =========================
+
+        const technologyButtons =
+            document.querySelectorAll(
+                ".technology-button"
+            );
+
+
+        const selectedTechnologies =
+            document.getElementById(
+                "selected-technologies"
+            );
+
+
+        const otherTechnologyInput =
+            document.getElementById(
+                "other-technology-input"
+            );
+
+
+        const addTechnologyButton =
+            document.getElementById(
+                "add-technology-button"
+            );
+
+
+        const customTechnologies =
+            document.getElementById(
+                "custom-technologies"
+            );
+
+
+        let selected = selectedTechnologies.value
+            .split(",")
+            .map(technology => technology.trim())
+            .filter(Boolean);
+        const knownTechnologies = new Set(
+            Array.from(technologyButtons, button => button.dataset.tech)
+        );
+
+        technologyButtons.forEach(button => {
+            if (selected.includes(button.dataset.tech)) {
+                button.classList.add("selected");
+            }
+            button.setAttribute(
+                "aria-pressed",
+                button.classList.contains("selected")
+            );
+        });
+
+
+
+        // =========================
+        // NORMAL TECHNOLOGY BUTTONS
+        // =========================
+
+        technologyButtons.forEach(button => {
+
+
+            button.addEventListener(
+                "click",
+                function () {
+
+
+                    const technology =
+                        this.dataset.tech;
+
+
+                    this.classList.toggle(
+                        "selected"
+                    );
+                    this.setAttribute(
+                        "aria-pressed",
+                        this.classList.contains("selected")
+                    );
+
+
+                    if (
+                        this.classList.contains(
+                            "selected"
+                        )
+                    ) {
+
+
+                        if (
+                            !selected.includes(
+                                technology
+                            )
+                        ) {
+
+                            selected.push(
+                                technology
+                            );
+
+                        }
+
+
+                    } else {
+
+
+                        selected =
+                            selected.filter(
+                                tech =>
+                                    tech !== technology
+                            );
+
+                    }
+
+
+                    updateTechnologies();
+
+                }
+
+            );
+
+        });
+
+        selected
+            .filter(technology => !knownTechnologies.has(technology))
+            .forEach(renderCustomTechnology);
+        updateTechnologies();
+
+
+        // =========================
+        // ADD CUSTOM TECHNOLOGY
+        // =========================
+
+        addTechnologyButton.addEventListener(
+            "click",
+            addCustomTechnology
+        );
+
+
+        otherTechnologyInput.addEventListener(
+            "keydown",
+            function (event) {
+
+
+                if (event.key === "Enter") {
+
+
+                    event.preventDefault();
+
+
+                    addCustomTechnology();
+
+                }
+
+            }
+        );
+
+
+
+        function addCustomTechnology() {
+
+
+            const technology =
+                otherTechnologyInput.value.trim();
+
+
+            if (technology === "") {
+
+                return;
+
+            }
+
+
+            if (selected.includes(technology)) {
+
+
+                otherTechnologyInput.value = "";
+
+                return;
+
+            }
+
+
+            selected.push(technology);
+            renderCustomTechnology(technology);
+            otherTechnologyInput.value = "";
+            updateTechnologies();
+        }
+
+        function renderCustomTechnology(technology) {
+            const button =
+                document.createElement(
+                    "button"
+                );
+
+
+            button.type = "button";
+
+
+            button.className =
+                "technology-button selected custom-technology";
+            button.setAttribute("aria-label", `Remove ${technology}`);
+
+
+            button.textContent =
+                technology + " ×";
+
+
+
+            button.addEventListener(
+                "click",
+                function () {
+
+
+                    selected =
+                        selected.filter(
+                            tech =>
+                                tech !== technology
+                        );
+
+
+                    button.remove();
+
+
+                    updateTechnologies();
+
+                }
+            );
+
+
+            customTechnologies.appendChild(
+                button
+            );
+        }
+
+
+
+        // =========================
+        // UPDATE TECHNOLOGY FIELD
+        // =========================
+
+        function updateTechnologies() {
+
+
+            selectedTechnologies.value =
+                selected.join(", ");
+
+        }
+
+
+
+        // =========================
+        // CUSTOM FILE UPLOAD
+        // =========================
+
+        const mediaInput =
+            document.getElementById("media");
+
+
+        const fileName =
+            document.getElementById("file-name");
+
+
+        mediaInput.addEventListener(
+            "change",
+            function () {
+
+
+                if (this.files.length > 0) {
+
+
+                    fileName.textContent =
+                        this.files[0].name;
+
+
+                } else {
+
+
+                    fileName.textContent =
+                        "No file selected";
+
+                }
+
+            }
+        );
+
+
+    </script>
+
+
+</body>
+
+</html>

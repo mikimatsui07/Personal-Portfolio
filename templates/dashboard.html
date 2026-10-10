@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Dashboard - Mik Portfolio</title>
+
+    <!-- Google Font -->
+    <link
+        rel="preconnect"
+        href="https://fonts.googleapis.com"
+    >
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <!-- Main CSS -->
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+    <div class="dashboard">
+
+        <!-- =========================
+             SIDEBAR
+        ========================== -->
+
+        <aside class="sidebar">
+
+            <div class="sidebar-brand">
+
+                <h1>
+                    MIK
+                </h1>
+
+                <span>
+                    PORTFOLIO
+                </span>
+
+            </div>
+
+
+            <nav class="sidebar-nav">
+
+                <a
+                    href="/dashboard"
+                >
+                    <span>▦</span>
+                    Dashboard
+                </a>
+
+                <a href="#projects">
+                    <span>▣</span>
+                    Projects
+                </a>
+
+                <a href="#messages">
+                    <span>✉</span>
+                    Messages
+                </a>
+
+                <a href="/">
+                    <span>↗</span>
+                    View Site
+                </a>
+
+            </nav>
+
+
+            <div class="sidebar-bottom">
+
+                <a href="/logout">
+                    <span>↪</span>
+                    Logout
+                </a>
+
+            </div>
+
+        </aside>
+
+
+        <!-- =========================
+             MAIN CONTENT
+        ========================== -->
+
+        <main class="dashboard-content">
+
+            <!-- HEADER -->
+
+            <header class="dashboard-header">
+
+                <div>
+
+                    <p class="dashboard-label">
+                        ADMIN DASHBOARD
+                    </p>
+
+                    <h1>
+                        Welcome back, {{ session["username"] }}!
+                    </h1>
+
+                </div>
+
+
+            </header>
+
+            {% with feedback_items = get_flashed_messages(with_categories=true) %}
+                {% if feedback_items %}
+                    <div class="dashboard-feedback-list" aria-live="polite">
+                        {% for category, message in feedback_items %}
+                            <p class="dashboard-feedback dashboard-feedback-{{ category }}" role="status">
+                                {{ message }}
+                            </p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- =========================
+                 STATISTICS
+            ========================== -->
+
+            <section class="dashboard-stats">
+
+                <div class="stat-card">
+
+                    <div class="stat-icon">
+                        ▣
+                    </div>
+
+                    <div>
+
+                        <span>
+                            Projects
+                        </span>
+
+                        <strong>
+                            {{ project_count }}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div class="stat-card">
+
+                    <div class="stat-icon">
+                        ✉
+                    </div>
+
+                    <div>
+
+                        <span>
+                            Messages
+                        </span>
+
+                        <strong>
+                            {{ message_count }}
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div class="stat-card">
+
+                    <div class="stat-icon">
+                        ✦
+                    </div>
+
+                    <div>
+
+                        <span>
+                            Portfolio
+                        </span>
+
+                        <strong>
+                            Active
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- =========================
+                 PROJECTS
+            ========================== -->
+
+            <section
+                id="projects"
+                class="dashboard-section"
+            >
+
+                <div class="section-header">
+
+                    <div>
+
+                        <p class="dashboard-label">
+                            YOUR WORK
+                        </p>
+
+                        <h2>
+                            Recent Projects
+                        </h2>
+
+                    </div>
+
+                    <a
+                        href="/add-project"
+                        class="section-add-button"
+                    >
+                        + Add Project
+                    </a>
+
+                </div>
+
+
+                {% if projects %}
+
+                    <div class="project-list">
+
+                        {% for project in projects %}
+
+                            <article class="project-card">
+
+                                <!-- PROJECT MEDIA -->
+
+                                <div class="project-media">
+
+                                    {% if project.media %}
+
+                                        <img
+                                            src="{{ url_for(
+                                                'static',
+                                                filename='uploads/' + project.media
+                                            ) }}"
+                                            alt="{{ project.title }}"
+                                        >
+
+                                    {% else %}
+
+                                        <div class="no-project-image">
+                                            ✦
+                                        </div>
+
+                                    {% endif %}
+
+                                </div>
+
+
+                                <!-- PROJECT INFORMATION -->
+
+                                <div class="project-card-content">
+
+                                    <span class="project-date">
+                                        {{ project.created_at }}
+                                    </span>
+
+                                    <h3>
+                                        {{ project.title }}
+                                    </h3>
+
+                                    <p>
+                                        {{ project.description }}
+                                    </p>
+
+
+                                    {% if project.technologies %}
+
+                                        <div class="project-technologies">
+
+                                            {% for technology in project.technologies.split(',') %}
+
+                                                <span>
+                                                    {{ technology.strip() }}
+                                                </span>
+
+                                            {% endfor %}
+
+                                        </div>
+
+                                    {% endif %}
+
+
+                                    <!-- PROJECT ACTIONS -->
+
+                                    <div class="project-actions">
+
+                                        {% if project.project_link %}
+
+                                            <a
+                                                href="{{ project.project_link }}"
+                                                target="_blank"
+                                                class="view-project-button"
+                                            >
+                                                View Project
+                                            </a>
+
+                                        {% endif %}
+
+
+                                        <a
+                                            href="/edit-project/{{ project.id }}"
+                                            class="project-action-button"
+                                        >
+                                            Edit
+                                        </a>
+
+
+                                        <form
+                                            method="POST"
+                                            action="/delete-project/{{ project.id }}"
+                                            class="delete-project-form"
+                                            onsubmit="return confirm('Delete this item? This action cannot be undone.');"
+                                        >
+
+                                            <button
+                                                type="submit"
+                                                class="project-action-button delete-button"
+                                            >
+                                                Delete
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+                                </div>
+
+                            </article>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% else %}
+
+                    <div class="project-placeholder">
+
+                        <div class="empty-project-icon">
+                            ✦
+                        </div>
+
+                        <h3>
+                            No projects yet
+                        </h3>
+
+                        <p>
+                            Add your first project to your portfolio.
+                        </p>
+
+                    </div>
+
+                {% endif %}
+
+            </section>
+
+
+            <!-- =========================
+                 MESSAGES
+            ========================== -->
+
+            <section
+                id="messages"
+                class="dashboard-section messages-section"
+            >
+
+                <div class="section-header">
+
+                    <div>
+
+                        <p class="dashboard-label">
+                            INBOX
+                        </p>
+
+                        <h2>
+                            Messages
+                        </h2>
+
+                    </div>
+
+                </div>
+
+
+                {% if messages %}
+
+                    <div class="message-list">
+
+                        {% for message in messages %}
+
+                            <article class="message-card">
+
+                                <!-- MESSAGE HEADER -->
+
+                                <div class="message-card-header">
+
+                                    <div class="message-sender">
+
+                                        <div class="message-avatar">
+                                            {{ message.name[0]|upper }}
+                                        </div>
+
+
+                                        <div>
+
+                                            <h3>
+                                                {{ message.name }}
+                                            </h3>
+
+                                            <a
+                                                href="mailto:{{ message.email }}"
+                                                class="message-email"
+                                            >
+                                                {{ message.email }}
+                                            </a>
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <span class="message-date">
+                                        {{ message.created_at }}
+                                    </span>
+
+                                </div>
+
+
+                                <!-- MESSAGE CONTENT -->
+
+                                <div class="message-body">
+
+                                    <p>
+                                        {{ message.message }}
+                                    </p>
+
+                                </div>
+
+
+                                <!-- MESSAGE ACTIONS -->
+
+                                <div class="message-actions">
+                                    <form
+                                        method="POST"
+                                        action="/delete-message/{{ message.id }}"
+                                        onsubmit="return confirm('Delete this item? This action cannot be undone.');"
+                                    >
+
+                                        <button
+                                            type="submit"
+                                            class="message-delete-button"
+                                        >
+                                            Delete
+                                        </button>
+
+                                    </form>
+
+                                </div>
+
+                            </article>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% else %}
+
+                    <div class="message-empty">
+
+                        <div class="empty-message-icon">
+                            ✉
+                        </div>
+
+                        <h3>
+                            No messages yet
+                        </h3>
+
+                        <p>
+                            Messages from your portfolio contact form will appear here.
+                        </p>
+
+                    </div>
+
+                {% endif %}
+
+            </section>
+
+
+        </main>
+
+    </div>
+
+    <script>
+        const dashboardNav = document.querySelector(".sidebar-nav");
+        const dashboardLinks = Array.from(
+            dashboardNav.querySelectorAll('a[href="/dashboard"], a[href^="#"]')
+        );
+        const dashboardSections = dashboardLinks.map(link => ({
+            link,
+            section: link.getAttribute("href") === "/dashboard"
+                ? document.querySelector(".dashboard-header")
+                : document.querySelector(link.getAttribute("href"))
+        })).filter(item => item.section);
+
+        function updateDashboardNavigation() {
+            const activationLine = Math.min(window.innerHeight * 0.3, 220);
+            let activeItem = dashboardSections[0];
+
+            dashboardSections.forEach(item => {
+                if (item.section.getBoundingClientRect().top <= activationLine) {
+                    activeItem = item;
+                }
+            });
+
+            if (
+                window.innerHeight + window.scrollY >=
+                document.documentElement.scrollHeight - 2
+            ) {
+                activeItem = dashboardSections[dashboardSections.length - 1];
+            }
+
+            dashboardSections.forEach(item => {
+                const isActive = item === activeItem;
+                item.link.classList.toggle("active", isActive);
+
+                if (isActive) {
+                    item.link.setAttribute("aria-current", "location");
+                } else {
+                    item.link.removeAttribute("aria-current");
+                }
+            });
+        }
+
+        window.addEventListener("scroll", updateDashboardNavigation, { passive: true });
+        window.addEventListener("resize", updateDashboardNavigation);
+        window.addEventListener("load", updateDashboardNavigation);
+        updateDashboardNavigation();
+    </script>
+
+</body>
+
+</html>

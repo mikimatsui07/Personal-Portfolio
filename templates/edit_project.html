@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Edit Project - Mik Portfolio</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+
+    <link
+        rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin
+    >
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+</head>
+
+<body>
+
+    <div class="dashboard">
+
+        <!-- SIDEBAR -->
+
+        <aside class="sidebar">
+
+            <div class="sidebar-brand">
+
+                <h1>MIK</h1>
+
+                <span>PORTFOLIO</span>
+
+            </div>
+
+
+            <nav class="sidebar-nav">
+
+                <a href="/dashboard">
+                    <span>⌂</span>
+                    Dashboard
+                </a>
+
+                <a href="/dashboard#projects" class="active" aria-current="page">
+                    <span>▣</span>
+                    Projects
+                </a>
+
+                <a href="/dashboard#messages">
+                    <span>✉</span>
+                    Messages
+                </a>
+
+                <a href="/">
+                    <span>↗</span>
+                    View Site
+                </a>
+
+            </nav>
+
+            <div class="sidebar-bottom">
+                <a href="/logout">
+                    <span>↪</span>
+                    Logout
+                </a>
+            </div>
+
+
+            <div class="sidebar-bottom">
+
+                <a href="/logout">
+                    <span>↪</span>
+                    Logout
+                </a>
+
+            </div>
+
+        </aside>
+
+
+        <!-- MAIN CONTENT -->
+
+        <main class="dashboard-content">
+
+            <div class="dashboard-header">
+
+                <div>
+
+                    <p class="dashboard-label">
+                        PORTFOLIO
+                    </p>
+
+                    <h1>
+                        Edit Project
+                    </h1>
+
+                    <p class="dashboard-subtitle">
+                        Update the information for your project.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- EDIT FORM -->
+
+            <div class="edit-project-container">
+
+                {% if error %}
+                    <p class="form-error" role="alert">{{ error }}</p>
+                {% endif %}
+
+                <form
+                    method="POST"
+                    enctype="multipart/form-data"
+                    class="edit-project-form"
+                >
+
+                    <!-- TITLE -->
+
+                    <div class="form-group">
+
+                        <label for="title">
+                            Project Title
+                        </label>
+
+                        <input
+                            type="text"
+                            id="title"
+                            name="title"
+                            value="{{ form.get('title', project.title) }}"
+                            maxlength="160"
+                            required
+                        >
+
+                    </div>
+
+
+                    <!-- DESCRIPTION -->
+
+                    <div class="form-group">
+
+                        <label for="description">
+                            Description
+                        </label>
+
+                        <textarea
+                            id="description"
+                            name="description"
+                            rows="6"
+                            maxlength="5000"
+                            required
+                        >{{ form.get('description', project.description) }}</textarea>
+
+                    </div>
+
+
+                    <!-- TECHNOLOGIES -->
+
+                    <div class="form-group">
+
+                        <label for="selected-technologies">
+                            Technologies
+                        </label>
+
+                        <p class="form-help">Choose any that apply, or add your own below.</p>
+
+                        {% set selected_technologies = form.get('technologies', project.technologies or '').split(',') | map('trim') | list %}
+                        <div class="technology-category">
+                            <h3>Programming &amp; Web</h3>
+                            <div class="technology-buttons">
+                                {% for technology in ['HTML', 'CSS', 'JavaScript', 'Python', 'Flask', 'Java', 'PHP', 'MySQL', 'SQL', 'C', 'C++', 'C#'] %}
+                                    <button type="button" class="technology-button{% if technology in selected_technologies %} selected{% endif %}" data-tech="{{ technology }}" aria-pressed="{{ 'true' if technology in selected_technologies else 'false' }}">{{ technology }}</button>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="technology-category">
+                            <h3>Art &amp; Design</h3>
+                            <div class="technology-buttons">
+                                {% for technology in ['IbisPaint X', 'Canva', 'Adobe Photoshop', 'Adobe Illustrator', 'Figma', 'Krita', 'Clip Studio Paint'] %}
+                                    <button type="button" class="technology-button{% if technology in selected_technologies %} selected{% endif %}" data-tech="{{ technology }}" aria-pressed="{{ 'true' if technology in selected_technologies else 'false' }}">{{ technology }}</button>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="technology-category">
+                            <h3>Animation &amp; 3D</h3>
+                            <div class="technology-buttons">
+                                {% for technology in ['Blender', 'Adobe Animate', 'Toon Boom', 'After Effects', 'Premiere Pro'] %}
+                                    <button type="button" class="technology-button{% if technology in selected_technologies %} selected{% endif %}" data-tech="{{ technology }}" aria-pressed="{{ 'true' if technology in selected_technologies else 'false' }}">{{ technology }}</button>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="technology-category">
+                            <h3>Development Tools</h3>
+                            <div class="technology-buttons">
+                                {% for technology in ['VS Code', 'Git', 'GitHub', 'XAMPP', 'Cisco Packet Tracer'] %}
+                                    <button type="button" class="technology-button{% if technology in selected_technologies %} selected{% endif %}" data-tech="{{ technology }}" aria-pressed="{{ 'true' if technology in selected_technologies else 'false' }}">{{ technology }}</button>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="technology-category">
+                            <h3>Other</h3>
+                            <div class="other-technology">
+                                <input type="text" id="other-technology-input" placeholder="Type a technology..." aria-label="Custom technology">
+                                <button type="button" id="add-technology-button">Add</button>
+                            </div>
+                            <div class="technology-buttons" id="custom-technologies">
+                                {% for technology in selected_technologies if technology and technology not in ['HTML', 'CSS', 'JavaScript', 'Python', 'Flask', 'Java', 'PHP', 'MySQL', 'SQL', 'C', 'C++', 'C#', 'IbisPaint X', 'Canva', 'Adobe Photoshop', 'Adobe Illustrator', 'Figma', 'Krita', 'Clip Studio Paint', 'Blender', 'Adobe Animate', 'Toon Boom', 'After Effects', 'Premiere Pro', 'VS Code', 'Git', 'GitHub', 'XAMPP', 'Cisco Packet Tracer'] %}
+                                    <button type="button" class="technology-button selected custom-technology" data-custom-tech="{{ technology }}" aria-label="Remove {{ technology }}">{{ technology }} ×</button>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <input
+                            type="hidden"
+                            name="technologies"
+                            id="selected-technologies"
+                            value="{{ selected_technologies | reject('equalto', '') | join(', ') }}"
+                        >
+
+                    </div>
+
+
+                    <!-- DATE -->
+
+                    <div class="form-group">
+
+                        <label for="created_at">
+                            Project Date
+                        </label>
+
+                        <input
+                            type="date"
+                            id="created_at"
+                            name="created_at"
+                            value="{{ form.get('created_at', project.created_at) }}"
+                            required
+                        >
+
+                    </div>
+
+
+                    <!-- PROJECT LINK -->
+
+                    <div class="form-group">
+
+                        <label for="project_link">
+                            Project Link
+                        </label>
+
+                        <input
+                            type="url"
+                            id="project_link"
+                            name="project_link"
+                            value="{{ form.get('project_link', project.project_link or '') }}"
+                            placeholder="https://example.com"
+                            maxlength="2048"
+                        >
+
+                    </div>
+
+
+                    <!-- EXISTING MEDIA -->
+
+                    <section class="form-group media-editor" aria-labelledby="media-heading">
+                        <div class="media-editor-heading">
+                            <label id="media-heading" for="media">Project Media</label>
+                            <p>Optional. Replace the current file or remove it from this project.</p>
+                        </div>
+
+                        {% if project.media %}
+                            {% set media_file = project.media.lower() %}
+                            <div class="current-media-card">
+                                <div class="current-media-preview">
+                                    {% if media_file.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
+                                        <img
+                                            src="{{ url_for('static', filename='uploads/' + project.media) }}"
+                                            alt="Current project media"
+                                        >
+                                    {% elif media_file.endswith(('.mp4', '.webm', '.mov')) %}
+                                        <video controls preload="metadata">
+                                            <source src="{{ url_for('static', filename='uploads/' + project.media) }}">
+                                            Your browser does not support video playback.
+                                        </video>
+                                    {% elif media_file.endswith('.pdf') %}
+                                        <a
+                                            class="current-media-document"
+                                            href="{{ url_for('static', filename='uploads/' + project.media) }}"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                        >
+                                            <span class="document-icon">PDF</span>
+                                            <span>Open current PDF</span>
+                                        </a>
+                                    {% else %}
+                                        <div class="current-media-document">
+                                            <span class="document-icon">FILE</span>
+                                            <span>Current project file</span>
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="current-media-details">
+                                    <span class="media-status-label">CURRENT FILE</span>
+                                    <strong class="current-media-name">{{ project.media }}</strong>
+                                    <label class="remove-media-option" for="remove_media">
+                                        <input type="checkbox" name="remove_media" id="remove_media">
+                                        <span>Remove current media</span>
+                                    </label>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="media-empty-state">
+                                <span class="document-icon">+</span>
+                                <span>No media uploaded for this project yet.</span>
+                            </div>
+                        {% endif %}
+
+                        <div class="media-upload-row">
+                            <input
+                                type="file"
+                                id="media"
+                                name="media"
+                                accept=".png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.mov,.pdf"
+                                aria-describedby="media-help selected-media-name"
+                            >
+                            <label class="media-upload-button" for="media">
+                                <span aria-hidden="true">↑</span>
+                                Choose replacement
+                            </label>
+                            <span id="selected-media-name" class="current-media-name">No replacement selected</span>
+                        </div>
+                        <small id="media-help">PNG, JPG, GIF, WebP, MP4, WebM, MOV, or PDF. Maximum file size: 16 MB.</small>
+                    </section>
+
+
+                    <!-- BUTTONS -->
+
+                    <div class="edit-form-actions">
+
+                        <a
+                            href="/dashboard"
+                            class="cancel-button"
+                        >
+                            Cancel
+                        </a>
+
+                        <button
+                            type="submit"
+                            class="save-project-button"
+                        >
+                            Save Changes
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </main>
+
+    </div>
+
+    <script>
+        const technologyButtons = document.querySelectorAll(
+            ".technology-category .technology-button[data-tech]"
+        );
+        const selectedTechnologies = document.getElementById("selected-technologies");
+        const otherTechnologyInput = document.getElementById("other-technology-input");
+        const addTechnologyButton = document.getElementById("add-technology-button");
+        const customTechnologies = document.getElementById("custom-technologies");
+        const selected = selectedTechnologies.value
+            .split(",")
+            .map(technology => technology.trim())
+            .filter(Boolean);
+
+        function updateTechnologies() {
+            selectedTechnologies.value = selected.join(", ");
+        }
+
+        function addCustomTechnology(value) {
+            const technology = value.trim();
+            if (!technology || selected.some(item => item.toLowerCase() === technology.toLowerCase())) {
+                otherTechnologyInput.value = "";
+                return;
+            }
+
+            selected.push(technology);
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "technology-button selected custom-technology";
+            button.setAttribute("aria-label", `Remove ${technology}`);
+            button.textContent = `${technology} ×`;
+            button.addEventListener("click", () => {
+                const index = selected.indexOf(technology);
+                if (index !== -1) {
+                    selected.splice(index, 1);
+                }
+                button.remove();
+                updateTechnologies();
+            });
+            customTechnologies.appendChild(button);
+            otherTechnologyInput.value = "";
+            updateTechnologies();
+        }
+
+        technologyButtons.forEach(button => {
+            button.addEventListener("click", () => {
+                const technology = button.dataset.tech;
+                const index = selected.indexOf(technology);
+                if (index === -1) {
+                    selected.push(technology);
+                    button.classList.add("selected");
+                    button.setAttribute("aria-pressed", "true");
+                } else {
+                    selected.splice(index, 1);
+                    button.classList.remove("selected");
+                    button.setAttribute("aria-pressed", "false");
+                }
+                updateTechnologies();
+            });
+        });
+
+        customTechnologies.querySelectorAll("[data-custom-tech]").forEach(button => {
+            button.addEventListener("click", () => {
+                const technology = button.dataset.customTech;
+                const index = selected.indexOf(technology);
+                if (index !== -1) {
+                    selected.splice(index, 1);
+                }
+                button.remove();
+                updateTechnologies();
+            });
+        });
+
+        addTechnologyButton.addEventListener("click", () => {
+            addCustomTechnology(otherTechnologyInput.value);
+        });
+
+        otherTechnologyInput.addEventListener("keydown", event => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addCustomTechnology(otherTechnologyInput.value);
+            }
+        });
+
+        updateTechnologies();
+
+        const mediaInput = document.getElementById("media");
+        const selectedMediaName = document.getElementById("selected-media-name");
+
+        mediaInput.addEventListener("change", () => {
+            selectedMediaName.textContent = mediaInput.files.length
+                ? `Replacement: ${mediaInput.files[0].name}`
+                : "No replacement selected";
+
+            const removeMedia = document.getElementById("remove_media");
+            if (mediaInput.files.length && removeMedia) {
+                removeMedia.checked = false;
+            }
+        });
+    </script>
+
+</body>
+
+</html>

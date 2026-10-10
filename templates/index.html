@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Mik | Portfolio</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+</head>
+
+<body>
+
+    <!-- NAVIGATION -->
+    <header class="portfolio-header">
+
+        <nav class="portfolio-nav">
+
+            <a href="#home" class="portfolio-logo">
+                MIK
+            </a>
+
+            <div class="portfolio-nav-links">
+
+                <a href="#home">Home</a>
+                <a href="#about">About</a>
+                <a href="#projects">Projects</a>
+                <a href="#contact">Contact</a>
+
+            </div>
+
+        </nav>
+
+    </header>
+
+
+    <!-- HERO -->
+    <section id="home" class="portfolio-hero">
+
+        <div class="hero-content">
+
+            <p class="hero-label">
+                WELCOME TO MY PORTFOLIO
+            </p>
+
+            <h1>
+                Hi, I'm <span>Miki</span>.
+            </h1>
+
+            <p class="hero-description">
+                A student, creative artist, and aspiring developer
+                who enjoys creating digital art, websites, and
+                other creative projects.
+            </p>
+
+            <div class="hero-buttons">
+
+                <a
+                    href="#projects"
+                    class="hero-primary-button"
+                >
+                    View My Projects
+                </a>
+
+                <a
+                    href="#contact"
+                    class="hero-secondary-button"
+                >
+                    Contact Me
+                </a>
+
+            </div>
+
+        </div>
+
+
+        <div class="hero-decoration">
+
+            <div class="hero-circle"></div>
+
+            <div class="hero-card">
+                <span>✦</span>
+                <span>✧</span>
+                <span>✦</span>
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- ABOUT -->
+    <section
+        id="about"
+        class="portfolio-section about-section"
+    >
+
+        <div class="section-heading">
+
+            <p class="portfolio-label">
+                ABOUT ME
+            </p>
+
+            <h2>
+                A little about me
+            </h2>
+
+        </div>
+
+
+        <div class="about-content">
+
+            <div class="about-image">
+
+                <div class="about-placeholder">
+                    <span>Miki G. Matsui</span>
+                </div>
+
+            </div>
+
+
+            <div class="about-text">
+
+                <p>
+                    I'm an information student interested in technology,
+                    programming, digital art, animation, and
+                    design.
+                </p>
+
+                <p>
+                    I enjoy learning new things and turning
+                    ideas into creative projects through
+                    design.
+                </p>
+
+
+                <div class="about-skills">
+
+                    <span>Digital Art</span>
+                    <span>Programming</span>
+                    <span>Speed typist</span>
+                    <span>Graphic Design</span>
+                    <span>Animation</span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- PROJECTS -->
+    <section
+        id="projects"
+        class="portfolio-section projects-section"
+    >
+
+        <div class="section-heading">
+
+            <p class="portfolio-label">
+                MY WORK
+            </p>
+
+            <h2>
+                My Projects
+            </h2>
+
+        </div>
+
+
+        <div class="portfolio-project-grid">
+
+            {% if projects %}
+
+                {% for project in projects %}
+
+                    <article class="portfolio-project-card">
+
+                        <!-- PROJECT MEDIA -->
+                        <div class="portfolio-project-image">
+
+                            {% if project.media %}
+
+                                {% set media_file = project.media.lower() %}
+
+
+                                {% if
+                                    media_file.endswith('.png')
+                                    or media_file.endswith('.jpg')
+                                    or media_file.endswith('.jpeg')
+                                    or media_file.endswith('.gif')
+                                    or media_file.endswith('.webp')
+                                %}
+
+                                    <img
+                                        src="{{ url_for(
+                                            'static',
+                                            filename='uploads/' + project.media
+                                        ) }}"
+                                        alt="{{ project.title }}"
+                                    >
+
+
+                                {% elif
+                                    media_file.endswith('.mp4')
+                                    or media_file.endswith('.webm')
+                                    or media_file.endswith('.mov')
+                                %}
+
+                                    <video controls>
+
+                                        <source
+                                            src="{{ url_for(
+                                                'static',
+                                                filename='uploads/' + project.media
+                                            ) }}"
+                                        >
+
+                                        Your browser does not support
+                                        video playback.
+
+                                    </video>
+
+
+                                {% elif media_file.endswith('.pdf') %}
+
+                                    <div class="portfolio-no-image">
+                                        <span>PDF</span>
+                                    </div>
+
+
+                                {% else %}
+
+                                    <div class="portfolio-no-image">
+                                        <span>FILE</span>
+                                    </div>
+
+                                {% endif %}
+
+
+                            {% else %}
+
+                                <div class="portfolio-no-image">
+                                    <span>PROJECT</span>
+                                </div>
+
+                            {% endif %}
+
+                        </div>
+
+
+                        <!-- PROJECT INFORMATION -->
+                        <div class="portfolio-project-content">
+
+                            <p class="portfolio-project-date">
+                                {{ project.created_at }}
+                            </p>
+
+                            <h3>
+                                {{ project.title }}
+                            </h3>
+
+                            <p>
+                                {{ project.description }}
+                            </p>
+
+
+                            {% if project.technologies %}
+
+                                <div class="portfolio-project-tags">
+
+                                    {% for technology in project.technologies.split(',') %}
+
+                                        <span>
+                                            {{ technology.strip() }}
+                                        </span>
+
+                                    {% endfor %}
+
+                                </div>
+
+                            {% endif %}
+
+
+                            {% if project.project_link %}
+
+                                <a
+                                    href="{{ project.project_link }}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    class="portfolio-project-link"
+                                >
+                                    View Project →
+                                </a>
+
+                            {% endif %}
+
+                        </div>
+
+                    </article>
+
+                {% endfor %}
+
+
+            {% else %}
+
+                <div class="portfolio-empty-projects">
+
+                    <p>
+                        No projects have been added yet.
+                    </p>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+
+    <!-- CONTACT -->
+    <section
+        id="contact"
+        class="portfolio-section contact-section"
+    >
+
+        <div class="section-heading">
+
+            <p class="portfolio-label">
+                GET IN TOUCH
+            </p>
+
+            <h2>
+                Send Me a Message
+            </h2>
+
+            <p>
+                Have a question or want to get in touch?
+                Send me a message below.
+            </p>
+
+        </div>
+
+
+        <div class="contact-container">
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="contact-feedback-list" aria-live="polite">
+                        {% for category, message in messages %}
+                            <p class="contact-feedback contact-feedback-{{ category }}" role="status">
+                                {{ message }}
+                            </p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form
+                action="/send-message"
+                method="POST"
+                class="contact-form"
+            >
+
+                <div class="contact-row">
+
+                    <!-- NAME -->
+                    <div class="contact-field">
+
+                        <label for="name">
+                            Name
+                        </label>
+
+                        <input
+                            type="text"
+                            id="name"
+                            name="name"
+                            placeholder="Your name"
+                            required
+                        >
+
+                    </div>
+
+
+                    <!-- EMAIL -->
+                    <div class="contact-field">
+
+                        <label for="email">
+                            Email
+                        </label>
+
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            placeholder="your@email.com"
+                            required
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <!-- MESSAGE -->
+                <div class="contact-field">
+
+                    <label for="message">
+                        Message
+                    </label>
+
+                    <textarea
+                        id="message"
+                        name="message"
+                        rows="7"
+                        placeholder="Write your message here..."
+                        required
+                    ></textarea>
+
+                </div>
+
+
+                <!-- SEND BUTTON -->
+                <button
+                    type="submit"
+                    class="contact-submit"
+                >
+                    Send Message
+                </button>
+
+            </form>
+
+        </div>
+
+    </section>
+
+
+    <!-- FOOTER -->
+    <footer class="portfolio-footer">
+
+        <p>
+            © 2026 Mik Portfolio. All rights reserved.
+        </p>
+
+        <a href="{{ url_for('login') }}" class="footer-admin-link">
+            Admin Login
+        </a>
+
+    </footer>
+
+    <script>
+        const portfolioNav = document.querySelector(".portfolio-nav");
+        const sectionLinks = Array.from(
+            document.querySelectorAll(".portfolio-nav-links a[href^='#']")
+        );
+        const pageSections = sectionLinks
+            .map(link => document.querySelector(link.getAttribute("href")))
+            .filter(Boolean);
+
+        function updateActiveSection() {
+            const activationLine =
+                portfolioNav.getBoundingClientRect().bottom +
+                Math.min(window.innerHeight * 0.25, 180);
+            let activeSection = pageSections[0];
+
+            pageSections.forEach(section => {
+                if (section.getBoundingClientRect().top <= activationLine) {
+                    activeSection = section;
+                }
+            });
+
+            if (
+                window.innerHeight + window.scrollY >=
+                document.documentElement.scrollHeight - 2
+            ) {
+                activeSection = pageSections[pageSections.length - 1];
+            }
+
+            sectionLinks.forEach(link => {
+                const isActive = link.hash === `#${activeSection.id}`;
+                link.classList.toggle("active", isActive);
+
+                if (isActive) {
+                    link.setAttribute("aria-current", "location");
+                } else {
+                    link.removeAttribute("aria-current");
+                }
+            });
+        }
+
+        window.addEventListener("scroll", updateActiveSection, { passive: true });
+        window.addEventListener("resize", updateActiveSection);
+        window.addEventListener("load", updateActiveSection);
+        updateActiveSection();
+    </script>
+
+</body>
+
+</html>
