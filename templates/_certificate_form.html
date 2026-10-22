@@ -1,0 +1,194 @@
+{#
+    Certificate form, shared by Add Certificate and Edit Certificate.
+
+    Uses:
+      certificate   - the certificate being edited (missing when adding)
+      form          - submitted values to refill after an error
+      error         - error message, if any
+      submit_label  - text of the save button
+#}
+{% set photo_url = certificate.photo_url if certificate else none %}
+
+<div class="edit-project-container">
+
+    {% if error %}
+        <p class="form-error" role="alert">{{ error }}</p>
+    {% endif %}
+
+    <form
+        method="POST"
+        enctype="multipart/form-data"
+        class="edit-project-form"
+    >
+
+        <!-- PHOTO -->
+
+        <section class="form-group media-editor" aria-labelledby="photo-heading">
+
+            <div class="media-editor-heading">
+                <label id="photo-heading" for="photo">Certificate Photo</label>
+                <p>
+                    {% if certificate %}
+                        Optional. Choose a new photo to replace the current one.
+                    {% else %}
+                        Required. A clear photo or scan of the certificate.
+                    {% endif %}
+                </p>
+            </div>
+
+            <div class="profile-picture-row">
+
+                <div class="profile-picture-preview certificate-photo-preview" id="photo-preview">
+                    {% if photo_url %}
+                        <img src="{{ photo_url }}" alt="Current certificate photo">
+                    {% else %}
+                        <span class="profile-picture-empty" aria-hidden="true">✪</span>
+                    {% endif %}
+                </div>
+
+                <div class="profile-picture-actions">
+
+                    <div class="media-upload-row">
+                        <input
+                            type="file"
+                            id="photo"
+                            name="photo"
+                            accept=".png,.jpg,.jpeg,.gif,.webp"
+                            aria-describedby="photo-help selected-photo-name"
+                            {% if not certificate %}required{% endif %}
+                        >
+                        <label class="media-upload-button" for="photo">
+                            <span aria-hidden="true">↑</span>
+                            {{ 'Choose new photo' if photo_url else 'Choose photo' }}
+                        </label>
+                    </div>
+
+                    <span id="selected-photo-name" class="current-media-name">
+                        No new photo selected
+                    </span>
+
+                    <small id="photo-help">PNG, JPG, GIF, or WebP. Maximum file size: 10 MB.</small>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- TITLE -->
+
+        <div class="form-group">
+
+            <label for="title">
+                Title
+            </label>
+
+            <input
+                type="text"
+                id="title"
+                name="title"
+                maxlength="160"
+                placeholder="Example: Web Development Bootcamp"
+                value="{{ form.get('title', certificate.title if certificate else '') }}"
+                required
+            >
+
+        </div>
+
+
+        <!-- DESCRIPTION -->
+
+        <div class="form-group">
+
+            <label for="description">
+                Description
+            </label>
+
+            <p class="form-help">Optional. Who issued it, or what you learned.</p>
+
+            <textarea
+                id="description"
+                name="description"
+                rows="5"
+                maxlength="2000"
+                placeholder="Write a short description about this certificate..."
+            >{{ form.get('description', certificate.description if certificate else '') }}</textarea>
+
+        </div>
+
+
+        <!-- DATE OBTAINED -->
+
+        <div class="form-group">
+
+            <label for="obtained_at">
+                Date Obtained
+            </label>
+
+            <input
+                type="date"
+                id="obtained_at"
+                name="obtained_at"
+                value="{{ form.get('obtained_at', certificate.obtained_iso if certificate else '') }}"
+                required
+            >
+
+        </div>
+
+
+        <!-- BUTTONS -->
+
+        <div class="edit-form-actions">
+
+            <a
+                href="/dashboard#certificates"
+                class="cancel-button"
+            >
+                Cancel
+            </a>
+
+            <button
+                type="submit"
+                class="save-project-button"
+            >
+                {{ submit_label }}
+            </button>
+
+        </div>
+
+    </form>
+
+</div>
+
+<script>
+    // Show the chosen photo before saving.
+    (() => {
+        const input = document.getElementById("photo");
+        const preview = document.getElementById("photo-preview");
+        const selectedName = document.getElementById("selected-photo-name");
+        const originalPreview = preview.innerHTML;
+        let previewUrl = null;
+
+        input.addEventListener("change", () => {
+            if (previewUrl) {
+                URL.revokeObjectURL(previewUrl);
+                previewUrl = null;
+            }
+
+            if (!input.files.length) {
+                preview.innerHTML = originalPreview;
+                selectedName.textContent = "No new photo selected";
+                return;
+            }
+
+            const file = input.files[0];
+            previewUrl = URL.createObjectURL(file);
+            const image = document.createElement("img");
+            image.src = previewUrl;
+            image.alt = "New photo preview";
+            preview.replaceChildren(image);
+            selectedName.textContent = `New photo: ${file.name}`;
+        });
+    })();
+</script>

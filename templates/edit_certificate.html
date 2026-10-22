@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Edit Certificate - Mik Portfolio</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='menu.js') }}"></script>
+
+</head>
+
+<body>
+
+    {% with skeleton="admin" %}{% include "_page_skeleton.html" %}{% endwith %}
+
+    <div class="dashboard">
+
+        <!-- SIDEBAR -->
+
+        {% set active = "certificates" %}
+        {% include "_admin_sidebar.html" %}
+
+
+        <!-- MAIN CONTENT -->
+
+        <main class="dashboard-content">
+
+            <div class="dashboard-header">
+
+                <div>
+
+                    <p class="dashboard-label">
+                        ACHIEVEMENTS
+                    </p>
+
+                    <h1>
+                        Edit Certificate
+                    </h1>
+
+                    <p class="dashboard-subtitle">
+                        Update the information for your certificate.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- CERTIFICATE FORM -->
+
+            {% set submit_label = "Save Changes" %}
+            {% include "_certificate_form.html" %}
+
+        </main>
+
+    </div>
+
+</body>
+
+</html>

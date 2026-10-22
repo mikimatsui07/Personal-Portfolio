@@ -35,10 +35,16 @@
         href="{{ url_for('static', filename='style.css') }}"
     >
 
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='menu.js') }}"></script>
+
 </head>
 
 
 <body>
+
+    {% with skeleton="admin" %}{% include "_page_skeleton.html" %}{% endwith %}
 
     <div class="dashboard">
 
@@ -46,58 +52,8 @@
              SIDEBAR
         ========================== -->
 
-        <aside class="sidebar">
-
-            <div class="sidebar-brand">
-
-                <h1>
-                    MIK
-                </h1>
-
-                <span>
-                    PORTFOLIO
-                </span>
-
-            </div>
-
-
-            <nav class="sidebar-nav">
-
-                <a
-                    href="/dashboard"
-                >
-                    <span>▦</span>
-                    Dashboard
-                </a>
-
-                <a href="#projects">
-                    <span>▣</span>
-                    Projects
-                </a>
-
-                <a href="#messages">
-                    <span>✉</span>
-                    Messages
-                </a>
-
-                <a href="/">
-                    <span>↗</span>
-                    View Site
-                </a>
-
-            </nav>
-
-
-            <div class="sidebar-bottom">
-
-                <a href="/logout">
-                    <span>↪</span>
-                    Logout
-                </a>
-
-            </div>
-
-        </aside>
+        {% set on_dashboard = true %}
+        {% include "_admin_sidebar.html" %}
 
 
         <!-- =========================
@@ -209,6 +165,89 @@
 
 
             <!-- =========================
+                 PROFILE
+            ========================== -->
+
+            <section
+                id="profile"
+                class="dashboard-section"
+            >
+
+                <div class="section-header">
+
+                    <div>
+
+                        <p class="dashboard-label">
+                            ABOUT ME
+                        </p>
+
+                        <h2>
+                            Profile
+                        </h2>
+
+                    </div>
+
+                    <a
+                        href="/edit-profile"
+                        class="section-add-button"
+                    >
+                        ✎ Edit Profile
+                    </a>
+
+                </div>
+
+
+                <div class="profile-summary">
+
+                    <div class="profile-picture-preview">
+                        {% if profile.picture %}
+                            <img
+                                src="{{ url_for('static', filename='uploads/' + profile.picture) }}"
+                                alt="Profile picture"
+                            >
+                        {% else %}
+                            <span class="profile-picture-empty" aria-hidden="true">✦</span>
+                        {% endif %}
+                    </div>
+
+
+                    <div class="profile-summary-content">
+
+                        <p class="profile-summary-label">HERO</p>
+
+                        <p>
+                            <strong>Hi, I'm {{ profile.hero_name }}.</strong>
+                            {{ profile.hero_intro }}
+                        </p>
+
+                        <p class="profile-summary-label">ABOUT</p>
+
+                        {% for paragraph in profile.paragraphs %}
+                            <p>{{ paragraph }}</p>
+                        {% endfor %}
+
+                        {% if profile.skills %}
+
+                            <div class="project-technologies">
+                                {% for skill in profile.skills %}
+                                    <span>{{ skill }}</span>
+                                {% endfor %}
+                            </div>
+
+                        {% else %}
+
+                            <p class="skill-empty">No skills added yet.</p>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+            <!-- =========================
                  PROJECTS
             ========================== -->
 
@@ -253,22 +292,41 @@
 
                                 <div class="project-media">
 
-                                    {% if project.media %}
+                                    {% set cover = project.gallery[0] if project.gallery else none %}
+
+                                    {% if cover and cover.kind == 'image' %}
 
                                         <img
-                                            src="{{ url_for(
-                                                'static',
-                                                filename='uploads/' + project.media
-                                            ) }}"
+                                            src="{{ cover.url }}"
                                             alt="{{ project.title }}"
+                                            loading="lazy"
                                         >
+
+                                    {% elif cover and cover.kind == 'video' %}
+
+                                        <video
+                                            src="{{ cover.url }}#t=0.1"
+                                            muted
+                                            playsinline
+                                            preload="metadata"
+                                        ></video>
+
+                                    {% elif cover %}
+
+                                        <div class="no-project-image">
+                                            {{ 'PDF' if cover.kind == 'pdf' else 'FILE' }}
+                                        </div>
 
                                     {% else %}
 
                                         <div class="no-project-image">
-                                            ✦
+                                            PROJECT
                                         </div>
 
+                                    {% endif %}
+
+                                    {% if project.gallery | length > 1 %}
+                                        <span class="media-count-badge">+{{ project.gallery | length - 1 }}</span>
                                     {% endif %}
 
                                 </div>
@@ -383,6 +441,151 @@
 
 
             <!-- =========================
+                 CERTIFICATES
+            ========================== -->
+
+            <section
+                id="certificates"
+                class="dashboard-section"
+            >
+
+                <div class="section-header">
+
+                    <div>
+
+                        <p class="dashboard-label">
+                            ACHIEVEMENTS
+                        </p>
+
+                        <h2>
+                            Certificates
+                        </h2>
+
+                    </div>
+
+                    <a
+                        href="/add-certificate"
+                        class="section-add-button"
+                    >
+                        + Add Certificate
+                    </a>
+
+                </div>
+
+
+                {% if certificates %}
+
+                    <div class="project-list">
+
+                        {% for certificate in certificates %}
+
+                            <article class="project-card certificate-admin-card">
+
+                                <!-- CERTIFICATE PHOTO -->
+
+                                <div class="project-media">
+
+                                    {% if certificate.photo_url %}
+
+                                        <img
+                                            src="{{ certificate.photo_url }}"
+                                            alt="{{ certificate.title }}"
+                                            loading="lazy"
+                                        >
+
+                                    {% else %}
+
+                                        <div class="no-project-image">
+                                            CERTIFICATE
+                                        </div>
+
+                                    {% endif %}
+
+                                </div>
+
+
+                                <!-- CERTIFICATE INFORMATION -->
+
+                                <div class="project-card-content">
+
+                                    <span class="project-date">
+                                        Obtained
+                                        <time datetime="{{ certificate.obtained_iso }}">{{ certificate.obtained_label }}</time>
+                                    </span>
+
+                                    <h3>
+                                        {{ certificate.title }}
+                                    </h3>
+
+                                    {% if certificate.description %}
+                                        <p>
+                                            {{ certificate.description }}
+                                        </p>
+                                    {% endif %}
+
+
+                                    <!-- CERTIFICATE ACTIONS -->
+
+                                    <div class="project-actions">
+
+                                        <a
+                                            href="/edit-certificate/{{ certificate.id }}"
+                                            class="project-action-button"
+                                        >
+                                            Edit
+                                        </a>
+
+
+                                        <form
+                                            method="POST"
+                                            action="/delete-certificate/{{ certificate.id }}"
+                                            class="delete-project-form"
+                                            onsubmit="return confirm('Delete this item? This action cannot be undone.');"
+                                        >
+
+                                            <button
+                                                type="submit"
+                                                class="project-action-button delete-button"
+                                            >
+                                                Delete
+                                            </button>
+
+                                        </form>
+
+                                    </div>
+
+                                </div>
+
+                            </article>
+
+                        {% endfor %}
+
+                    </div>
+
+                {% else %}
+
+                    <div class="project-placeholder">
+
+                        <div class="empty-project-icon">
+                            ✪
+                        </div>
+
+                        <h3>
+                            No certificates yet
+                        </h3>
+
+                        <p>
+                            Add your first certificate to show it on your portfolio.
+                        </p>
+
+                    </div>
+
+                {% endif %}
+
+            </section>
+
+
+            <!-- =========================
                  MESSAGES
             ========================== -->
 
@@ -455,11 +658,7 @@
                                 <!-- MESSAGE CONTENT -->
 
                                 <div class="message-body">
-
-                                    <p>
-                                        {{ message.message }}
-                                    </p>
-
+                                    <p>{{ message.message.strip() }}</p>
                                 </div>
 
 
@@ -528,7 +727,56 @@
                 : document.querySelector(link.getAttribute("href"))
         })).filter(item => item.section);
 
+        // Sliding highlight that glides between the active sidebar links.
+        const navIndicator = document.createElement("span");
+        navIndicator.className = "nav-indicator";
+        navIndicator.setAttribute("aria-hidden", "true");
+        dashboardNav.prepend(navIndicator);
+        dashboardNav.classList.add("has-indicator");
+
+        let currentActiveLink = null;
+
+        function moveIndicator(link) {
+            navIndicator.style.width = `${link.offsetWidth}px`;
+            navIndicator.style.height = `${link.offsetHeight}px`;
+            navIndicator.style.transform =
+                `translate(${link.offsetLeft}px, ${link.offsetTop}px)`;
+        }
+
+        function setActiveItem(activeItem) {
+            dashboardSections.forEach(item => {
+                const isActive = item === activeItem;
+                item.link.classList.toggle("active", isActive);
+
+                if (isActive) {
+                    item.link.setAttribute("aria-current", "location");
+                } else {
+                    item.link.removeAttribute("aria-current");
+                }
+            });
+
+            if (activeItem && activeItem.link !== currentActiveLink) {
+                currentActiveLink = activeItem.link;
+                moveIndicator(activeItem.link);
+            }
+        }
+
+        // While a clicked link is scrolling the page, keep it highlighted
+        // instead of letting the highlight step through every section passed.
+        let lockedItem = null;
+        let unlockTimer = null;
+
+        function unlockNavigation() {
+            lockedItem = null;
+            clearTimeout(unlockTimer);
+            updateDashboardNavigation();
+        }
+
         function updateDashboardNavigation() {
+            if (lockedItem) {
+                return;
+            }
+
             const activationLine = Math.min(window.innerHeight * 0.3, 220);
             let activeItem = dashboardSections[0];
 
@@ -545,22 +793,76 @@
                 activeItem = dashboardSections[dashboardSections.length - 1];
             }
 
-            dashboardSections.forEach(item => {
-                const isActive = item === activeItem;
-                item.link.classList.toggle("active", isActive);
-
-                if (isActive) {
-                    item.link.setAttribute("aria-current", "location");
-                } else {
-                    item.link.removeAttribute("aria-current");
-                }
-            });
+            setActiveItem(activeItem);
         }
 
         window.addEventListener("scroll", updateDashboardNavigation, { passive: true });
-        window.addEventListener("resize", updateDashboardNavigation);
+        window.addEventListener("scrollend", () => {
+            if (lockedItem) {
+                unlockNavigation();
+            }
+        });
+        window.addEventListener("resize", () => {
+            if (currentActiveLink) {
+                moveIndicator(currentActiveLink);
+            }
+            updateDashboardNavigation();
+        });
         window.addEventListener("load", updateDashboardNavigation);
         updateDashboardNavigation();
+
+        // Turn on the glide only after the first placement, so the
+        // highlight doesn't slide in from the corner on page load.
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => navIndicator.classList.add("ready"));
+        });
+
+        // Sidebar links on this page only scroll, so the CSS opening
+        // animation would not run again. Restart it on each click.
+        function replayOpening(elements) {
+            elements.forEach(element => {
+                element.style.animation = "none";
+            });
+            // Reading layout forces the browser to drop the old animation.
+            void document.body.offsetWidth;
+            elements.forEach(element => {
+                element.style.animation = "";
+            });
+        }
+
+        const openingElements = Array.from(document.querySelectorAll(
+            ".dashboard-header, .dashboard-stats .stat-card, .dashboard-section"
+        ));
+
+        dashboardSections.forEach(item => {
+            item.link.addEventListener("click", () => {
+                lockedItem = item;
+                setActiveItem(item);
+                clearTimeout(unlockTimer);
+                // Fallback for browsers without "scrollend", or when the
+                // page is already at that section and never scrolls.
+                unlockTimer = setTimeout(unlockNavigation, 1000);
+            });
+        });
+
+        dashboardLinks.forEach(link => {
+            link.addEventListener("click", event => {
+                const href = link.getAttribute("href");
+
+                if (href === "/dashboard") {
+                    event.preventDefault();
+                    history.replaceState(null, "", "/dashboard");
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                    replayOpening(openingElements);
+                    return;
+                }
+
+                const section = document.querySelector(href);
+                if (section) {
+                    replayOpening([section]);
+                }
+            });
+        });
     </script>
 
 </body>

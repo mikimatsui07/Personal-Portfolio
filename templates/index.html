@@ -11,25 +11,47 @@
         rel="stylesheet"
         href="{{ url_for('static', filename='style.css') }}"
     >
+
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='menu.js') }}"></script>
 </head>
 
 <body>
 
-    <!-- NAVIGATION -->
-    <header class="portfolio-header">
+    {% with skeleton="portfolio" %}{% include "_page_skeleton.html" %}{% endwith %}
 
-        <nav class="portfolio-nav">
+    <!-- NAVIGATION -->
+    <header class="portfolio-header" data-menu>
+
+        <nav class="portfolio-nav" aria-label="Main">
 
             <a href="#home" class="portfolio-logo">
                 MIK
             </a>
 
-            <div class="portfolio-nav-links">
+            {% include "_theme_switcher.html" %}
 
-                <a href="#home">Home</a>
-                <a href="#about">About</a>
-                <a href="#projects">Projects</a>
-                <a href="#contact">Contact</a>
+            <button
+                type="button"
+                class="menu-toggle"
+                data-menu-toggle
+                aria-controls="portfolio-menu"
+                aria-expanded="false"
+                aria-label="Open menu"
+            >
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+                <span aria-hidden="true"></span>
+            </button>
+
+            <div class="portfolio-nav-links" id="portfolio-menu">
+
+                <a href="#home"><span class="nav-icon" aria-hidden="true">⌂</span>Home</a>
+                <a href="#about"><span class="nav-icon" aria-hidden="true">◉</span>About</a>
+                <a href="#projects"><span class="nav-icon" aria-hidden="true">▣</span>Projects</a>
+                <a href="#certificates"><span class="nav-icon" aria-hidden="true">✪</span>Certificates</a>
+                <a href="#contact"><span class="nav-icon" aria-hidden="true">✉</span>Contact</a>
 
             </div>
 
@@ -48,14 +70,10 @@
             </p>
 
             <h1>
-                Hi, I'm <span>Miki</span>.
+                Hi, I'm <span>{{ profile.hero_name }}</span>.
             </h1>
 
-            <p class="hero-description">
-                A student, creative artist, and aspiring developer
-                who enjoys creating digital art, websites, and
-                other creative projects.
-            </p>
+            <p class="hero-description">{{ profile.hero_intro }}</p>
 
             <div class="hero-buttons">
 
@@ -78,9 +96,22 @@
         </div>
 
 
-        <div class="hero-decoration">
+        <div class="hero-decoration{% if profile.hero_picture %} has-photo{% endif %}">
 
-            <div class="hero-circle"></div>
+            {% if profile.hero_picture %}
+
+                <div class="hero-photo">
+                    <img
+                        src="{{ url_for('static', filename='uploads/' + profile.hero_picture) }}"
+                        alt="{{ profile.hero_name }}"
+                    >
+                </div>
+
+            {% else %}
+
+                <div class="hero-circle"></div>
+
+            {% endif %}
 
             <div class="hero-card">
                 <span>✦</span>
@@ -116,37 +147,43 @@
 
             <div class="about-image">
 
-                <div class="about-placeholder">
-                    <span>Miki G. Matsui</span>
-                </div>
+                {% if profile.picture %}
+
+                    <img
+                        class="about-photo"
+                        src="{{ url_for('static', filename='uploads/' + profile.picture) }}"
+                        alt="Miki G. Matsui"
+                    >
+
+                {% else %}
+
+                    <div class="about-placeholder">
+                        <span>Miki G. Matsui</span>
+                    </div>
+
+                {% endif %}
 
             </div>
 
 
             <div class="about-text">
 
-                <p>
-                    I'm an information student interested in technology,
-                    programming, digital art, animation, and
-                    design.
-                </p>
-
-                <p>
-                    I enjoy learning new things and turning
-                    ideas into creative projects through
-                    design.
-                </p>
+                {% for paragraph in profile.paragraphs %}
+                    <p>{{ paragraph }}</p>
+                {% endfor %}
 
 
-                <div class="about-skills">
+                {% if profile.skills %}
 
-                    <span>Digital Art</span>
-                    <span>Programming</span>
-                    <span>Speed typist</span>
-                    <span>Graphic Design</span>
-                    <span>Animation</span>
+                    <div class="about-skills">
 
-                </div>
+                        {% for skill in profile.skills %}
+                            <span>{{ skill }}</span>
+                        {% endfor %}
+
+                    </div>
+
+                {% endif %}
 
             </div>
 
@@ -180,79 +217,52 @@
 
                 {% for project in projects %}
 
-                    <article class="portfolio-project-card">
+                    {% set cover = project.gallery[0] if project.gallery else none %}
+                    {% set extra_count = project.gallery | length - 1 %}
 
-                        <!-- PROJECT MEDIA -->
-                        <div class="portfolio-project-image">
+                    <article
+                        class="portfolio-project-card"
+                        data-project-index="{{ loop.index0 }}"
+                    >
 
-                            {% if project.media %}
+                        <!-- PROJECT MEDIA (opens the project viewer) -->
+                        <button
+                            type="button"
+                            class="portfolio-project-image portfolio-project-open"
+                            aria-label="Open {{ project.title }}{% if extra_count > 0 %}, {{ project.gallery | length }} files{% endif %}"
+                        >
 
-                                {% set media_file = project.media.lower() %}
+                            {% if cover and cover.kind == 'image' %}
 
+                                <img src="{{ cover.url }}" alt="" loading="lazy">
 
-                                {% if
-                                    media_file.endswith('.png')
-                                    or media_file.endswith('.jpg')
-                                    or media_file.endswith('.jpeg')
-                                    or media_file.endswith('.gif')
-                                    or media_file.endswith('.webp')
-                                %}
+                            {% elif cover and cover.kind == 'video' %}
 
-                                    <img
-                                        src="{{ url_for(
-                                            'static',
-                                            filename='uploads/' + project.media
-                                        ) }}"
-                                        alt="{{ project.title }}"
-                                    >
+                                <video
+                                    src="{{ cover.url }}#t=0.1"
+                                    muted
+                                    playsinline
+                                    preload="metadata"
+                                ></video>
+                                <span class="media-play-badge" aria-hidden="true">▶</span>
 
+                            {% elif cover and cover.kind == 'pdf' %}
 
-                                {% elif
-                                    media_file.endswith('.mp4')
-                                    or media_file.endswith('.webm')
-                                    or media_file.endswith('.mov')
-                                %}
-
-                                    <video controls>
-
-                                        <source
-                                            src="{{ url_for(
-                                                'static',
-                                                filename='uploads/' + project.media
-                                            ) }}"
-                                        >
-
-                                        Your browser does not support
-                                        video playback.
-
-                                    </video>
-
-
-                                {% elif media_file.endswith('.pdf') %}
-
-                                    <div class="portfolio-no-image">
-                                        <span>PDF</span>
-                                    </div>
-
-
-                                {% else %}
-
-                                    <div class="portfolio-no-image">
-                                        <span>FILE</span>
-                                    </div>
-
-                                {% endif %}
-
+                                <span class="portfolio-no-image"><span>PDF</span></span>
 
                             {% else %}
 
-                                <div class="portfolio-no-image">
-                                    <span>PROJECT</span>
-                                </div>
+                                <span class="portfolio-no-image"><span>PROJECT</span></span>
 
                             {% endif %}
 
-                        </div>
+                            {% if extra_count > 0 %}
+                                <span class="media-count-badge" aria-hidden="true">+{{ extra_count }}</span>
+                            {% endif %}
+
+                            <span class="portfolio-project-open-hint" aria-hidden="true">View project</span>
+
+                        </button>
 
 
                         <!-- PROJECT INFORMATION -->
@@ -266,9 +276,20 @@
                                 {{ project.title }}
                             </h3>
 
-                            <p>
-                                {{ project.description }}
-                            </p>
+                            <p
+                                class="portfolio-project-description"
+                                id="project-description-{{ project.id }}"
+                            >{{ project.description }}</p>
+
+                            <button
+                                type="button"
+                                class="see-more-button"
+                                aria-expanded="false"
+                                aria-controls="project-description-{{ project.id }}"
+                                hidden
+                            >
+                                See more
+                            </button>
 
 
                             {% if project.technologies %}
@@ -323,6 +344,183 @@
         </div>
 
     </section>
+
+
+    <!-- PROJECT VIEWER (filled in by project-viewer.js) -->
+    <dialog
+        class="project-viewer"
+        id="project-viewer"
+        aria-labelledby="viewer-title"
+    >
+
+        <div class="viewer-layout">
+
+            <div class="viewer-media">
+
+                <div class="viewer-stage" id="viewer-stage"></div>
+
+                <button
+                    type="button"
+                    class="viewer-nav viewer-prev"
+                    id="viewer-prev"
+                    aria-label="Previous file"
+                >‹</button>
+
+                <button
+                    type="button"
+                    class="viewer-nav viewer-next"
+                    id="viewer-next"
+                    aria-label="Next file"
+                >›</button>
+
+                <span class="viewer-counter" id="viewer-counter" aria-live="polite"></span>
+
+                <div class="viewer-thumbs" id="viewer-thumbs"></div>
+
+            </div>
+
+            <div class="viewer-info">
+
+                <p class="portfolio-project-date" id="viewer-date"></p>
+
+                <h3 id="viewer-title"></h3>
+
+                <p class="viewer-description" id="viewer-description"></p>
+
+                <div class="portfolio-project-tags" id="viewer-tags"></div>
+
+                <a
+                    id="viewer-link"
+                    class="portfolio-project-link"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    View Project →
+                </a>
+
+            </div>
+
+        </div>
+
+        <button
+            type="button"
+            class="viewer-close"
+            id="viewer-close"
+            aria-label="Close project"
+        >×</button>
+
+    </dialog>
+
+    <script type="application/json" id="project-data">{{ project_data | tojson }}</script>
+
+
+    <!-- CERTIFICATES -->
+    <section
+        id="certificates"
+        class="portfolio-section certificates-section"
+    >
+
+        <div class="section-heading">
+
+            <p class="portfolio-label">
+                ACHIEVEMENTS
+            </p>
+
+            <h2>
+                My Certificates
+            </h2>
+
+        </div>
+
+
+        {% if certificates %}
+
+            <div class="certificate-grid">
+
+                {% for certificate in certificates %}
+
+                    <article class="certificate-card">
+
+                        <!-- PHOTO (opens the certificate viewer) -->
+                        {% if certificate.photo_url %}
+
+                            <button
+                                type="button"
+                                class="certificate-photo"
+                                data-certificate-photo="{{ certificate.photo_url }}"
+                                data-certificate-title="{{ certificate.title }}"
+                                aria-label="View {{ certificate.title }} certificate"
+                            >
+                                <img src="{{ certificate.photo_url }}" alt="" loading="lazy">
+                                <span class="portfolio-project-open-hint" aria-hidden="true">View certificate</span>
+                            </button>
+
+                        {% else %}
+
+                            <div class="certificate-photo">
+                                <span class="portfolio-no-image"><span>CERTIFICATE</span></span>
+                            </div>
+
+                        {% endif %}
+
+
+                        <!-- CERTIFICATE INFORMATION -->
+                        <div class="certificate-content">
+
+                            <p class="portfolio-project-date">
+                                <time datetime="{{ certificate.obtained_iso }}">{{ certificate.obtained_label }}</time>
+                            </p>
+
+                            <h3>
+                                {{ certificate.title }}
+                            </h3>
+
+                            {% if certificate.description %}
+                                <p class="certificate-description">{{ certificate.description }}</p>
+                            {% endif %}
+
+                        </div>
+
+                    </article>
+
+                {% endfor %}
+
+            </div>
+
+        {% else %}
+
+            <div class="portfolio-empty-projects">
+
+                <p>
+                    No certificates have been added yet.
+                </p>
+
+            </div>
+
+        {% endif %}
+
+    </section>
+
+
+    <!-- CERTIFICATE VIEWER -->
+    <dialog
+        class="certificate-viewer"
+        id="certificate-viewer"
+        aria-labelledby="certificate-viewer-title"
+    >
+
+        <img id="certificate-viewer-image" alt="">
+
+        <p class="certificate-viewer-title" id="certificate-viewer-title"></p>
+
+        <button
+            type="button"
+            class="viewer-close"
+            id="certificate-viewer-close"
+            aria-label="Close certificate"
+        >×</button>
+
+    </dialog>
 
 
     <!-- CONTACT -->
@@ -464,7 +662,68 @@
             .map(link => document.querySelector(link.getAttribute("href")))
             .filter(Boolean);
 
+        // Sliding highlight that glides between the active nav links.
+        const navLinksContainer = document.querySelector(".portfolio-nav-links");
+        const navIndicator = document.createElement("span");
+        navIndicator.className = "nav-indicator";
+        navIndicator.setAttribute("aria-hidden", "true");
+        navLinksContainer.prepend(navIndicator);
+        navLinksContainer.classList.add("has-indicator");
+
+        let currentActiveLink = null;
+
+        function moveIndicator(link) {
+            navIndicator.style.width = `${link.offsetWidth}px`;
+            navIndicator.style.height = `${link.offsetHeight}px`;
+            navIndicator.style.transform =
+                `translate(${link.offsetLeft}px, ${link.offsetTop}px)`;
+        }
+
+        function setActiveLink(activeLink) {
+            sectionLinks.forEach(link => {
+                const isActive = link === activeLink;
+                link.classList.toggle("active", isActive);
+
+                if (isActive) {
+                    link.setAttribute("aria-current", "location");
+                } else {
+                    link.removeAttribute("aria-current");
+                }
+            });
+
+            if (activeLink && activeLink !== currentActiveLink) {
+                currentActiveLink = activeLink;
+                moveIndicator(activeLink);
+            }
+        }
+
+        // While a clicked link is scrolling the page, keep it highlighted
+        // instead of letting the highlight step through every section passed.
+        let lockedLink = null;
+        let unlockTimer = null;
+
+        function unlockNavigation() {
+            lockedLink = null;
+            clearTimeout(unlockTimer);
+            updateActiveSection();
+        }
+
+        sectionLinks.forEach(link => {
+            link.addEventListener("click", () => {
+                lockedLink = link;
+                setActiveLink(link);
+                clearTimeout(unlockTimer);
+                // Fallback for browsers without "scrollend", or when the
+                // page is already at that section and never scrolls.
+                unlockTimer = setTimeout(unlockNavigation, 1000);
+            });
+        });
+
         function updateActiveSection() {
+            if (lockedLink) {
+                return;
+            }
+
             const activationLine =
                 portfolioNav.getBoundingClientRect().bottom +
                 Math.min(window.innerHeight * 0.25, 180);
@@ -483,23 +742,76 @@
                 activeSection = pageSections[pageSections.length - 1];
             }
 
-            sectionLinks.forEach(link => {
-                const isActive = link.hash === `#${activeSection.id}`;
-                link.classList.toggle("active", isActive);
-
-                if (isActive) {
-                    link.setAttribute("aria-current", "location");
-                } else {
-                    link.removeAttribute("aria-current");
-                }
-            });
+            setActiveLink(
+                sectionLinks.find(link => link.hash === `#${activeSection.id}`)
+            );
         }
 
         window.addEventListener("scroll", updateActiveSection, { passive: true });
-        window.addEventListener("resize", updateActiveSection);
-        window.addEventListener("load", updateActiveSection);
+        window.addEventListener("scrollend", () => {
+            if (lockedLink) {
+                unlockNavigation();
+            }
+        });
+        window.addEventListener("resize", () => {
+            if (currentActiveLink) {
+                moveIndicator(currentActiveLink);
+            }
+            updateActiveSection();
+        });
+        window.addEventListener("load", () => {
+            // Fonts may have changed link widths since the first placement.
+            if (currentActiveLink) {
+                moveIndicator(currentActiveLink);
+            }
+            updateActiveSection();
+        });
         updateActiveSection();
+
+        // Turn on the glide only after the first placement, so the
+        // highlight doesn't slide in from the corner on page load.
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => navIndicator.classList.add("ready"));
+        });
     </script>
+
+    <script>
+        // Certificate viewer: shows the full photo in a dialog.
+        (() => {
+            const viewer = document.getElementById("certificate-viewer");
+            const image = document.getElementById("certificate-viewer-image");
+            const title = document.getElementById("certificate-viewer-title");
+            const closeButton = document.getElementById("certificate-viewer-close");
+            let opener = null;
+
+            document.querySelectorAll("[data-certificate-photo]").forEach(button => {
+                button.addEventListener("click", () => {
+                    opener = button;
+                    image.src = button.dataset.certificatePhoto;
+                    image.alt = `${button.dataset.certificateTitle} certificate`;
+                    title.textContent = button.dataset.certificateTitle;
+                    viewer.showModal();
+                });
+            });
+
+            closeButton.addEventListener("click", () => viewer.close());
+
+            // A click on the dark backdrop (outside the dialog box) closes it.
+            viewer.addEventListener("click", event => {
+                if (event.target === viewer) {
+                    viewer.close();
+                }
+            });
+
+            viewer.addEventListener("close", () => {
+                if (opener) {
+                    opener.focus();
+                }
+            });
+        })();
+    </script>
+
+    <script src="{{ url_for('static', filename='project-viewer.js') }}"></script>
 
 </body>
 

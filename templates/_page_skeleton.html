@@ -1,0 +1,78 @@
+{#
+    Skeleton screen shown while a page loads (hidden by static/loading.js).
+
+    Include with:  {% with skeleton="portfolio" %}{% include "_page_skeleton.html" %}{% endwith %}
+    skeleton = "portfolio" | "admin" | "login"
+#}
+<div class="page-skeleton page-skeleton-{{ skeleton }}" aria-hidden="true">
+
+    {% if skeleton == "portfolio" %}
+
+        <div class="sk-topbar">
+            <span class="sk sk-logo"></span>
+            <span class="sk-topbar-links">
+                <span class="sk sk-pill"></span>
+                <span class="sk sk-pill"></span>
+                <span class="sk sk-pill"></span>
+                <span class="sk sk-pill"></span>
+            </span>
+            <span class="sk sk-switcher"></span>
+            <span class="sk sk-menu"></span>
+        </div>
+
+        <div class="sk-hero">
+            <div class="sk-hero-text">
+                <span class="sk sk-line sk-w-30"></span>
+                <span class="sk sk-heading sk-w-80"></span>
+                <span class="sk sk-heading sk-w-50"></span>
+                <span class="sk sk-line sk-w-90"></span>
+                <span class="sk sk-line sk-w-70"></span>
+                <span class="sk-buttons">
+                    <span class="sk sk-button"></span>
+                    <span class="sk sk-button sk-button-light"></span>
+                </span>
+            </div>
+            <span class="sk sk-photo"></span>
+        </div>
+
+    {% elif skeleton == "admin" %}
+
+        <div class="sk-sidebar">
+            <span class="sk sk-logo"></span>
+            <span class="sk-sidebar-items">
+                <span class="sk sk-item"></span>
+                <span class="sk sk-item"></span>
+                <span class="sk sk-item"></span>
+                <span class="sk sk-item"></span>
+                <span class="sk sk-item"></span>
+            </span>
+            <span class="sk sk-switcher sk-sidebar-switcher"></span>
+            <span class="sk sk-menu"></span>
+        </div>
+
+        <div class="sk-main">
+            <span class="sk sk-line sk-w-20"></span>
+            <span class="sk sk-heading sk-w-50"></span>
+            <span class="sk-cards">
+                <span class="sk sk-card"></span>
+                <span class="sk sk-card"></span>
+                <span class="sk sk-card"></span>
+            </span>
+            <span class="sk sk-panel"></span>
+        </div>
+
+    {% else %}
+
+        <div class="sk-login-card">
+            <span class="sk sk-heading sk-w-70 sk-center"></span>
+            <span class="sk sk-line sk-w-40 sk-center"></span>
+            <span class="sk sk-line sk-w-30"></span>
+            <span class="sk sk-input"></span>
+            <span class="sk sk-line sk-w-30"></span>
+            <span class="sk sk-input"></span>
+            <span class="sk sk-button sk-button-wide"></span>
+        </div>
+
+    {% endif %}
+
+</div>

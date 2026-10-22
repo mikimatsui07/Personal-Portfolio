@@ -6,9 +6,15 @@
     <title>Admin Login - Mik Portfolio</title>
 
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- No theme buttons here: theme.js applies the theme chosen on the
+         portfolio or dashboard (System, Light or Dark). -->
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
 </head>
 
 <body>
+
+    {% with skeleton="login" %}{% include "_page_skeleton.html" %}{% endwith %}
 
     <div class="login-container">
 

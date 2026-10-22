@@ -1,0 +1,71 @@
+{#
+    Admin sidebar, shared by every admin page.
+
+    Before including, a page may set:
+      active        - "profile", "projects", "certificates" or "messages"
+                      to highlight that link
+      on_dashboard  - true on the dashboard itself, so section links are
+                      "#profile" (scroll) instead of "/dashboard#profile"
+#}
+{% set section_base = "" if on_dashboard else "/dashboard" %}
+{% set sidebar_links = [
+    ("dashboard", "/dashboard", "▦", "Dashboard"),
+    ("profile", section_base ~ "#profile", "◉", "Profile"),
+    ("projects", section_base ~ "#projects", "▣", "Projects"),
+    ("certificates", section_base ~ "#certificates", "✪", "Certificates"),
+    ("messages", section_base ~ "#messages", "✉", "Messages")
+] %}
+
+<aside class="sidebar" data-menu>
+
+    <div class="sidebar-brand">
+
+        <h1>
+            MIK
+        </h1>
+
+        <span>
+            PORTFOLIO
+        </span>
+
+    </div>
+
+    <div class="sidebar-topbar-theme">
+        {% include "_theme_switcher.html" %}
+    </div>
+
+    <button
+        type="button"
+        class="menu-toggle"
+        data-menu-toggle
+        aria-controls="dashboard-menu"
+        aria-expanded="false"
+        aria-label="Open menu"
+    >
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+    </button>
+
+
+    <div class="sidebar-menu" id="dashboard-menu">
+
+        <nav class="sidebar-nav">
+
+            {% for key, href, icon, label in sidebar_links %}
+                <a
+                    href="{{ href }}"
+                    {% if active == key %}class="active" aria-current="page"{% endif %}
+                >
+                    <span>{{ icon }}</span>
+                    {{ label }}
+                </a>
+            {% endfor %}
+
+        </nav>
+
+        {% include "_sidebar_bottom.html" %}
+
+    </div>
+
+</aside>

@@ -32,10 +32,16 @@
         href="{{ url_for('static', filename='style.css') }}"
     >
 
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='menu.js') }}"></script>
+
 </head>
 
 
 <body>
+
+    {% with skeleton="admin" %}{% include "_page_skeleton.html" %}{% endwith %}
 
 
     <div class="dashboard">
@@ -45,25 +51,8 @@
              SIDEBAR
         ========================== -->
 
-        <aside class="sidebar">
-
-            <div class="sidebar-brand">
-                <h1>MIK</h1>
-                <span>PORTFOLIO</span>
-            </div>
-
-            <nav class="sidebar-nav">
-                <a href="/dashboard"><span>▦</span>Dashboard</a>
-                <a href="/dashboard#projects" class="active" aria-current="page"><span>▣</span>Projects</a>
-                <a href="/dashboard#messages"><span>✉</span>Messages</a>
-                <a href="/"><span>↗</span>View Site</a>
-            </nav>
-
-            <div class="sidebar-bottom">
-                <a href="/logout"><span>↪</span>Logout</a>
-            </div>
-
-        </aside>
+        {% set active = "projects" %}
+        {% include "_admin_sidebar.html" %}
 
 
 
@@ -597,19 +586,23 @@
                             id="media"
                             name="media"
                             accept=".png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.mov,.pdf"
+                            multiple
                         >
 
 
                         <span id="file-name">
-                            No file selected
+                            No files selected
                         </span>
 
 
                     </div>
 
+                    <div class="selected-files" id="selected-files"></div>
+
 
                     <p class="file-help">
-                        PNG, JPG, GIF, WebP, MP4, WebM, MOV, or PDF. Maximum file size: 16 MB.
+                        Select up to 10 files at once (hold Ctrl or Shift to pick several). The first file is the cover shown on your portfolio.
+                        PNG, JPG, GIF, WebP, MP4, WebM, MOV, or PDF. Maximum 16 MB each.
                     </p>
 
 
@@ -942,25 +935,31 @@
             document.getElementById("file-name");
 
 
+        const selectedFiles =
+            document.getElementById("selected-files");
+
+
         mediaInput.addEventListener(
             "change",
             function () {
 
+                const files = Array.from(this.files);
 
-                if (this.files.length > 0) {
+                fileName.textContent = files.length === 0
+                    ? "No files selected"
+                    : files.length === 1
+                        ? "1 file selected"
+                        : `${files.length} files selected`;
 
-
-                    fileName.textContent =
-                        this.files[0].name;
-
-
-                } else {
-
-
-                    fileName.textContent =
-                        "No file selected";
-
-                }
+                selectedFiles.replaceChildren(
+                    ...files.map((file, index) => {
+                        const chip = document.createElement("span");
+                        chip.textContent = index === 0
+                            ? `${file.name} (cover)`
+                            : file.name;
+                        return chip;
+                    })
+                );
 
             }
         );

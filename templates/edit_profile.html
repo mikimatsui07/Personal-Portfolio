@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Edit Profile - Mik Portfolio</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}"
+    >
+
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='menu.js') }}"></script>
+
+</head>
+
+<body>
+
+    {% with skeleton="admin" %}{% include "_page_skeleton.html" %}{% endwith %}
+
+    <div class="dashboard">
+
+        <!-- SIDEBAR -->
+
+        {% set active = "profile" %}
+        {% include "_admin_sidebar.html" %}
+
+
+        <!-- MAIN CONTENT -->
+
+        <main class="dashboard-content">
+
+            <div class="dashboard-header">
+
+                <div>
+
+                    <p class="dashboard-label">
+                        YOUR PROFILE
+                    </p>
+
+                    <h1>
+                        Edit Profile
+                    </h1>
+
+                    <p class="dashboard-subtitle">
+                        Update your introduction at the top of your portfolio and your About section.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <!-- PROFILE FORM -->
+
+            <div class="edit-project-container">
+
+                {% if error %}
+                    <p class="form-error" role="alert">{{ error }}</p>
+                {% endif %}
+
+                <form
+                    method="POST"
+                    enctype="multipart/form-data"
+                    class="edit-project-form"
+                >
+
+                    <!-- =========================
+                         HERO
+                    ========================== -->
+
+                    <div class="profile-form-heading">
+                        <p class="dashboard-label">HERO</p>
+                        <h2>Introduction</h2>
+                        <p>The first thing visitors see at the top of your portfolio.</p>
+                    </div>
+
+
+                    <!-- FORMAL PICTURE -->
+
+                    <section class="form-group media-editor" aria-labelledby="hero-picture-heading">
+
+                        <div class="media-editor-heading">
+                            <label id="hero-picture-heading" for="hero_picture">Formal Picture</label>
+                            <p>Optional. Replaces the purple circle in the hero. Portrait photos (taller than wide) look best.</p>
+                        </div>
+
+                        <div class="profile-picture-row">
+
+                            <div class="profile-picture-preview hero-picture-preview" id="hero-picture-preview">
+                                {% if profile.hero_picture %}
+                                    <img
+                                        src="{{ url_for('static', filename='uploads/' + profile.hero_picture) }}"
+                                        alt="Current formal picture"
+                                    >
+                                {% else %}
+                                    <span class="profile-picture-empty" aria-hidden="true">✦</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="profile-picture-actions">
+
+                                <div class="media-upload-row">
+                                    <input
+                                        type="file"
+                                        id="hero_picture"
+                                        name="hero_picture"
+                                        accept=".png,.jpg,.jpeg,.gif,.webp"
+                                        aria-describedby="hero-picture-help selected-hero-picture-name"
+                                    >
+                                    <label class="media-upload-button" for="hero_picture">
+                                        <span aria-hidden="true">↑</span>
+                                        {{ 'Choose new picture' if profile.hero_picture else 'Choose picture' }}
+                                    </label>
+                                </div>
+
+                                <span id="selected-hero-picture-name" class="current-media-name">
+                                    No new picture selected
+                                </span>
+
+                                {% if profile.hero_picture %}
+                                    <label class="remove-media-option" for="remove_hero_picture">
+                                        <input type="checkbox" name="remove_hero_picture" id="remove_hero_picture">
+                                        <span>Remove current picture</span>
+                                    </label>
+                                {% endif %}
+
+                                <small id="hero-picture-help">PNG, JPG, GIF, or WebP. Maximum file size: 10 MB.</small>
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
+
+                    <!-- HERO NAME -->
+
+                    <div class="form-group">
+
+                        <label for="hero_name">
+                            Name
+                        </label>
+
+                        <p class="form-help">Shown as “Hi, I'm <strong>Name</strong>.”</p>
+
+                        <input
+                            type="text"
+                            id="hero_name"
+                            name="hero_name"
+                            maxlength="40"
+                            value="{{ form.get('hero_name', profile.hero_name) }}"
+                            required
+                        >
+
+                    </div>
+
+
+                    <!-- HERO INTRODUCTION -->
+
+                    <div class="form-group">
+
+                        <label for="hero_intro">
+                            Introduction
+                        </label>
+
+                        <p class="form-help">A sentence or two under your name.</p>
+
+                        <textarea
+                            id="hero_intro"
+                            name="hero_intro"
+                            rows="3"
+                            maxlength="600"
+                            required
+                        >{{ form.get('hero_intro', profile.hero_intro) }}</textarea>
+
+                    </div>
+
+
+                    <!-- =========================
+                         ABOUT ME
+                    ========================== -->
+
+                    <div class="profile-form-heading">
+                        <p class="dashboard-label">ABOUT ME</p>
+                        <h2>About Section</h2>
+                        <p>Your picture, description, and skills further down the page.</p>
+                    </div>
+
+
+                    <!-- PROFILE PICTURE -->
+
+                    <section class="form-group media-editor" aria-labelledby="picture-heading">
+
+                        <div class="media-editor-heading">
+                            <label id="picture-heading" for="picture">Profile Picture</label>
+                            <p>Optional. Square images look best.</p>
+                        </div>
+
+                        <div class="profile-picture-row">
+
+                            <div class="profile-picture-preview" id="picture-preview">
+                                {% if profile.picture %}
+                                    <img
+                                        src="{{ url_for('static', filename='uploads/' + profile.picture) }}"
+                                        alt="Current profile picture"
+                                    >
+                                {% else %}
+                                    <span class="profile-picture-empty" aria-hidden="true">✦</span>
+                                {% endif %}
+                            </div>
+
+                            <div class="profile-picture-actions">
+
+                                <div class="media-upload-row">
+                                    <input
+                                        type="file"
+                                        id="picture"
+                                        name="picture"
+                                        accept=".png,.jpg,.jpeg,.gif,.webp"
+                                        aria-describedby="picture-help selected-picture-name"
+                                    >
+                                    <label class="media-upload-button" for="picture">
+                                        <span aria-hidden="true">↑</span>
+                                        {{ 'Choose new picture' if profile.picture else 'Choose picture' }}
+                                    </label>
+                                </div>
+
+                                <span id="selected-picture-name" class="current-media-name">
+                                    No new picture selected
+                                </span>
+
+                                {% if profile.picture %}
+                                    <label class="remove-media-option" for="remove_picture">
+                                        <input type="checkbox" name="remove_picture" id="remove_picture">
+                                        <span>Remove current picture</span>
+                                    </label>
+                                {% endif %}
+
+                                <small id="picture-help">PNG, JPG, GIF, or WebP. Maximum file size: 10 MB.</small>
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
+
+                    <!-- DESCRIPTION -->
+
+                    <div class="form-group">
+
+                        <label for="description">
+                            Description
+                        </label>
+
+                        <p class="form-help">Leave a blank line between paragraphs.</p>
+
+                        <textarea
+                            id="description"
+                            name="description"
+                            rows="7"
+                            maxlength="3000"
+                            required
+                        >{{ form.get('description', profile.description) }}</textarea>
+
+                    </div>
+
+
+                    <!-- SKILLS -->
+
+                    <div class="form-group">
+
+                        <label for="skill-input">
+                            Skills
+                        </label>
+
+                        <p class="form-help">
+                            Type a skill and press Enter or Add. Separate several with commas. Click a skill to remove it.
+                        </p>
+
+                        <div class="other-technology">
+                            <input
+                                type="text"
+                                id="skill-input"
+                                placeholder="Example: Character Design"
+                                maxlength="200"
+                            >
+                            <button type="button" id="add-skill-button" class="skill-add-button">
+                                Add
+                            </button>
+                        </div>
+
+                        <div class="technology-buttons skill-list" id="skill-list" aria-live="polite"></div>
+
+                        <p class="skill-empty" id="skill-empty">No skills added yet.</p>
+
+                        <input
+                            type="hidden"
+                            name="skills"
+                            id="skills-field"
+                            value="{{ form.get('skills', profile.skills | join(', ')) }}"
+                        >
+
+                    </div>
+
+
+                    <!-- BUTTONS -->
+
+                    <div class="edit-form-actions">
+
+                        <a
+                            href="/dashboard#profile"
+                            class="cancel-button"
+                        >
+                            Cancel
+                        </a>
+
+                        <button
+                            type="submit"
+                            class="save-project-button"
+                        >
+                            Save Profile
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </main>
+
+    </div>
+
+    <script>
+        // =========================
+        // SKILL BUTTONS
+        // =========================
+
+        const SKILL_MAX_LENGTH = 40;
+        const skillInput = document.getElementById("skill-input");
+        const addSkillButton = document.getElementById("add-skill-button");
+        const skillList = document.getElementById("skill-list");
+        const skillEmpty = document.getElementById("skill-empty");
+        const skillsField = document.getElementById("skills-field");
+
+        const skills = [];
+
+        function updateSkills() {
+            skillsField.value = skills.join(", ");
+            skillEmpty.hidden = skills.length > 0;
+        }
+
+        function renderSkill(skill) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "technology-button selected custom-technology";
+            button.setAttribute("aria-label", `Remove ${skill}`);
+            button.textContent = `${skill} ×`;
+            button.addEventListener("click", () => {
+                const index = skills.indexOf(skill);
+                if (index !== -1) {
+                    skills.splice(index, 1);
+                }
+                button.remove();
+                updateSkills();
+            });
+            skillList.appendChild(button);
+        }
+
+        function addSkills(rawValue) {
+            rawValue
+                .split(",")
+                .map(skill => skill.trim().replace(/\s+/g, " "))
+                .filter(Boolean)
+                .forEach(skill => {
+                    const alreadyAdded = skills.some(
+                        item => item.toLowerCase() === skill.toLowerCase()
+                    );
+                    if (alreadyAdded || skill.length > SKILL_MAX_LENGTH) {
+                        return;
+                    }
+                    skills.push(skill);
+                    renderSkill(skill);
+                });
+            updateSkills();
+        }
+
+        addSkills(skillsField.value);
+
+        addSkillButton.addEventListener("click", () => {
+            addSkills(skillInput.value);
+            skillInput.value = "";
+            skillInput.focus();
+        });
+
+        skillInput.addEventListener("keydown", event => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                addSkills(skillInput.value);
+                skillInput.value = "";
+            }
+        });
+
+
+        // =========================
+        // PICTURE PREVIEWS
+        // =========================
+
+        function setupPicturePicker(inputId, previewId, nameId, removeId) {
+            const input = document.getElementById(inputId);
+            const preview = document.getElementById(previewId);
+            const selectedName = document.getElementById(nameId);
+            const removeBox = document.getElementById(removeId);
+            const originalPreview = preview.innerHTML;
+            let previewUrl = null;
+
+            input.addEventListener("change", () => {
+                if (previewUrl) {
+                    URL.revokeObjectURL(previewUrl);
+                    previewUrl = null;
+                }
+
+                if (!input.files.length) {
+                    preview.innerHTML = originalPreview;
+                    selectedName.textContent = "No new picture selected";
+                    return;
+                }
+
+                const file = input.files[0];
+                previewUrl = URL.createObjectURL(file);
+                const image = document.createElement("img");
+                image.src = previewUrl;
+                image.alt = "New picture preview";
+                preview.replaceChildren(image);
+                preview.classList.remove("is-removing");
+                selectedName.textContent = `New picture: ${file.name}`;
+
+                if (removeBox) {
+                    removeBox.checked = false;
+                }
+            });
+
+            if (removeBox) {
+                removeBox.addEventListener("change", () => {
+                    // Removing wins over a newly chosen file, so drop the choice.
+                    if (removeBox.checked && input.files.length) {
+                        input.value = "";
+                        input.dispatchEvent(new Event("change"));
+                    }
+                    preview.classList.toggle("is-removing", removeBox.checked);
+                });
+            }
+        }
+
+        setupPicturePicker(
+            "hero_picture", "hero-picture-preview",
+            "selected-hero-picture-name", "remove_hero_picture"
+        );
+        setupPicturePicker(
+            "picture", "picture-preview",
+            "selected-picture-name", "remove_picture"
+        );
+    </script>
+
+</body>
+
+</html>

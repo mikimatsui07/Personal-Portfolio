@@ -30,67 +30,22 @@
         href="{{ url_for('static', filename='style.css') }}"
     >
 
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='loading.js') }}"></script>
+    <script src="{{ url_for('static', filename='menu.js') }}"></script>
+
 </head>
 
 <body>
+
+    {% with skeleton="admin" %}{% include "_page_skeleton.html" %}{% endwith %}
 
     <div class="dashboard">
 
         <!-- SIDEBAR -->
 
-        <aside class="sidebar">
-
-            <div class="sidebar-brand">
-
-                <h1>MIK</h1>
-
-                <span>PORTFOLIO</span>
-
-            </div>
-
-
-            <nav class="sidebar-nav">
-
-                <a href="/dashboard">
-                    <span>⌂</span>
-                    Dashboard
-                </a>
-
-                <a href="/dashboard#projects" class="active" aria-current="page">
-                    <span>▣</span>
-                    Projects
-                </a>
-
-                <a href="/dashboard#messages">
-                    <span>✉</span>
-                    Messages
-                </a>
-
-                <a href="/">
-                    <span>↗</span>
-                    View Site
-                </a>
-
-            </nav>
-
-            <div class="sidebar-bottom">
-                <a href="/logout">
-                    <span>↪</span>
-                    Logout
-                </a>
-            </div>
-
-
-            <div class="sidebar-bottom">
-
-                <a href="/logout">
-                    <span>↪</span>
-                    Logout
-                </a>
-
-            </div>
-
-        </aside>
+        {% set active = "projects" %}
+        {% include "_admin_sidebar.html" %}
 
 
         <!-- MAIN CONTENT -->
@@ -285,49 +240,35 @@
                     <section class="form-group media-editor" aria-labelledby="media-heading">
                         <div class="media-editor-heading">
                             <label id="media-heading" for="media">Project Media</label>
-                            <p>Optional. Replace the current file or remove it from this project.</p>
+                            <p>Optional. Up to 10 files. The first file is the cover shown on your portfolio; new files are added after the current ones.</p>
                         </div>
 
-                        {% if project.media %}
-                            {% set media_file = project.media.lower() %}
-                            <div class="current-media-card">
-                                <div class="current-media-preview">
-                                    {% if media_file.endswith(('.png', '.jpg', '.jpeg', '.gif', '.webp')) %}
-                                        <img
-                                            src="{{ url_for('static', filename='uploads/' + project.media) }}"
-                                            alt="Current project media"
-                                        >
-                                    {% elif media_file.endswith(('.mp4', '.webm', '.mov')) %}
-                                        <video controls preload="metadata">
-                                            <source src="{{ url_for('static', filename='uploads/' + project.media) }}">
-                                            Your browser does not support video playback.
-                                        </video>
-                                    {% elif media_file.endswith('.pdf') %}
-                                        <a
-                                            class="current-media-document"
-                                            href="{{ url_for('static', filename='uploads/' + project.media) }}"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                        >
-                                            <span class="document-icon">PDF</span>
-                                            <span>Open current PDF</span>
-                                        </a>
-                                    {% else %}
-                                        <div class="current-media-document">
-                                            <span class="document-icon">FILE</span>
-                                            <span>Current project file</span>
+                        {% if project.gallery %}
+                            <div class="media-gallery-grid">
+                                {% for media in project.gallery %}
+                                    <div class="media-gallery-item">
+                                        <div class="media-gallery-thumb">
+                                            {% if media.kind == 'image' %}
+                                                <img src="{{ media.url }}" alt="Project file {{ loop.index }}" loading="lazy">
+                                            {% elif media.kind == 'video' %}
+                                                <video src="{{ media.url }}#t=0.1" muted playsinline preload="metadata"></video>
+                                            {% else %}
+                                                <a href="{{ media.url }}" target="_blank" rel="noopener noreferrer">
+                                                    {{ 'PDF' if media.kind == 'pdf' else 'FILE' }} ↗
+                                                </a>
+                                            {% endif %}
                                         </div>
-                                    {% endif %}
-                                </div>
 
-                                <div class="current-media-details">
-                                    <span class="media-status-label">CURRENT FILE</span>
-                                    <strong class="current-media-name">{{ project.media }}</strong>
-                                    <label class="remove-media-option" for="remove_media">
-                                        <input type="checkbox" name="remove_media" id="remove_media">
-                                        <span>Remove current media</span>
-                                    </label>
-                                </div>
+                                        {% if loop.first %}
+                                            <span class="media-gallery-cover">COVER</span>
+                                        {% endif %}
+
+                                        <label class="remove-media-option">
+                                            <input type="checkbox" name="remove_media" value="{{ media.id }}">
+                                            <span>Remove</span>
+                                        </label>
+                                    </div>
+                                {% endfor %}
                             </div>
                         {% else %}
                             <div class="media-empty-state">
@@ -343,14 +284,16 @@
                                 name="media"
                                 accept=".png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.mov,.pdf"
                                 aria-describedby="media-help selected-media-name"
+                                multiple
                             >
                             <label class="media-upload-button" for="media">
                                 <span aria-hidden="true">↑</span>
-                                Choose replacement
+                                Add files
                             </label>
-                            <span id="selected-media-name" class="current-media-name">No replacement selected</span>
+                            <span id="selected-media-name" class="current-media-name">No new files selected</span>
                         </div>
-                        <small id="media-help">PNG, JPG, GIF, WebP, MP4, WebM, MOV, or PDF. Maximum file size: 16 MB.</small>
+                        <div class="selected-files" id="selected-files"></div>
+                        <small id="media-help">Hold Ctrl or Shift to pick several. PNG, JPG, GIF, WebP, MP4, WebM, MOV, or PDF. Maximum 16 MB each.</small>
                     </section>
 
 
@@ -469,16 +412,18 @@
 
         const mediaInput = document.getElementById("media");
         const selectedMediaName = document.getElementById("selected-media-name");
+        const selectedFiles = document.getElementById("selected-files");
 
         mediaInput.addEventListener("change", () => {
-            selectedMediaName.textContent = mediaInput.files.length
-                ? `Replacement: ${mediaInput.files[0].name}`
-                : "No replacement selected";
-
-            const removeMedia = document.getElementById("remove_media");
-            if (mediaInput.files.length && removeMedia) {
-                removeMedia.checked = false;
-            }
+            const files = Array.from(mediaInput.files);
+            selectedMediaName.textContent = files.length === 0
+                ? "No new files selected"
+                : `${files.length} new file${files.length === 1 ? "" : "s"} to add`;
+            selectedFiles.replaceChildren(...files.map(file => {
+                const chip = document.createElement("span");
+                chip.textContent = file.name;
+                return chip;
+            }));
         });
     </script>
 
