@@ -1,0 +1,10 @@
+{
+  "dependencies": {
+    "@supabase/server": "^1.9.2",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0"
+  },
+  "devDependencies": {
+    "prisma": "^8.0.0-rc.27"
+  }
+}
