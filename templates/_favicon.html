@@ -1,0 +1,10 @@
+{# Site icon, included in every page's <head>.
+   favicon.svg changes color with the device's light/dark setting.
+   The PNG is for browsers without SVG icons (sizes="48x48" makes the
+   others prefer the SVG); iPhones/iPads use apple-touch-icon.png. #}
+<link rel="icon" href="{{ url_for('static', filename='favicon.png') }}" sizes="48x48" type="image/png">
+<link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+{# Phone browsers tint their address bar with this color. #}
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#15111b">

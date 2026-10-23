@@ -31,10 +31,33 @@
         });
     }
 
+    // Phone address-bar color. The <meta> tags already follow the device;
+    // this keeps them matching when Light or Dark is picked on the site.
+    const BAR_COLORS = { light: "#ffffff", dark: "#15111b" };
+
+    function syncBarColor(theme) {
+        document.querySelectorAll('meta[name="theme-color"]').forEach(meta => {
+            if (!meta.dataset.deviceMedia) {
+                meta.dataset.deviceMedia = meta.getAttribute("media") || "";
+            }
+            if (savedChoice() === "system") {
+                meta.setAttribute("media", meta.dataset.deviceMedia);
+                meta.setAttribute(
+                    "content",
+                    meta.dataset.deviceMedia.includes("dark") ? BAR_COLORS.dark : BAR_COLORS.light
+                );
+            } else {
+                meta.removeAttribute("media");
+                meta.setAttribute("content", BAR_COLORS[theme]);
+            }
+        });
+    }
+
     function applyChoice(choice) {
         root.dataset.theme = resolve(choice);
         root.dataset.themeChoice = choice;
         syncSwitchers(choice);
+        syncBarColor(root.dataset.theme);
     }
 
     applyChoice(savedChoice());
@@ -48,6 +71,7 @@
 
     document.addEventListener("DOMContentLoaded", () => {
         syncSwitchers(savedChoice());
+        syncBarColor(root.dataset.theme);
 
         document.querySelectorAll("[data-theme-option]").forEach(option => {
             option.addEventListener("click", () => {

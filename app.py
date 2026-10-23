@@ -39,6 +39,7 @@ from flask import (
     redirect,
     render_template,
     request,
+    send_from_directory,
     session,
     url_for
 )
@@ -1351,6 +1352,18 @@ class LoginView(PageView):
         return self.render(error="Invalid username or password.")
 
 
+class FaviconView(BaseView):
+    """Browsers and link previews ask for /favicon.ico on their own."""
+
+    def get(self):
+        return send_from_directory(
+            os.path.join(os.path.dirname(__file__), "static"),
+            "favicon.png",
+            mimetype="image/png",
+            max_age=7 * 24 * 60 * 60
+        )
+
+
 class LogoutView(BaseView):
 
     def get(self):
@@ -2003,6 +2016,7 @@ class PortfolioApp:
         ("/delete-message/<int:message_id>", DeleteMessageView, "delete_message"),
         ("/upload-url", SignUploadView, "upload_url"),
         ("/logout", LogoutView, "logout"),
+        ("/favicon.ico", FaviconView, "favicon"),
     )
 
     def __init__(self, connection_factory=get_db_connection, storage=None):
