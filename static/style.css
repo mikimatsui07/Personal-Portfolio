@@ -7527,3 +7527,290 @@ button.is-busy {
         display: block;
     }
 }
+
+
+/* =========================================================
+   SMALL & SHORT SCREENS — flip phones, foldable cover screens
+   Classic flip / KaiOS phones are 240×320 (sideways 320×240);
+   foldable cover screens are about 260–300px wide.
+========================================================= */
+
+/* Open menus never reach past the bottom of the screen: anything that
+   does not fit scrolls inside the menu, so every link stays reachable. */
+@media (max-width: 700px) {
+    .has-menu-js .portfolio-nav-links {
+        max-height: calc(100vh - 64px);
+        max-height: calc(100dvh - 64px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+}
+
+@media (max-width: 900px) {
+    .has-menu-js .sidebar-menu,
+    .has-menu-js .sidebar.menu-open .sidebar-menu {
+        max-height: calc(100vh - 68px);
+        max-height: calc(100dvh - 68px);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+}
+
+/* Long email addresses wrap instead of pushing the card wider. */
+.message-sender > div {
+    min-width: 0;
+}
+
+.message-email {
+    overflow-wrap: anywhere;
+}
+
+/* Keypad / D-pad phones: a clear focus ring even on older phone
+   browsers that do not understand :focus-visible. */
+@supports not selector(:focus-visible) {
+    a:focus,
+    button:focus,
+    input:focus,
+    textarea:focus,
+    summary:focus {
+        outline: 3px solid rgba(117, 64, 184, 0.55);
+        outline-offset: 2px;
+    }
+}
+
+@media (max-width: 300px) {
+    /* ---------- Top bars: logo, compact theme switcher, menu button ---------- */
+
+    .has-menu-js .portfolio-nav {
+        min-height: 56px;
+        gap: 6px;
+        padding: 8px 10px;
+    }
+
+    .portfolio-logo {
+        font-size: 18px;
+        letter-spacing: 0.1em;
+    }
+
+    .sidebar {
+        column-gap: 6px;
+        padding: 10px;
+    }
+
+    .sidebar-brand h1 {
+        font-size: 18px;
+        letter-spacing: 0.1em;
+    }
+
+    .theme-switcher {
+        gap: 0;
+        padding: 2px;
+    }
+
+    .theme-switcher button {
+        width: 26px;
+        height: 26px;
+    }
+
+    .theme-switcher svg {
+        width: 14px;
+        height: 14px;
+    }
+
+    .menu-toggle,
+    .has-menu-js .portfolio-header .menu-toggle,
+    .has-menu-js .sidebar .menu-toggle {
+        width: 38px;
+        height: 38px;
+        flex-basis: 38px;
+    }
+
+    .menu-toggle span {
+        right: 9px;
+        left: 9px;
+    }
+
+    .menu-toggle span:nth-child(1) {
+        top: 11px;
+    }
+
+    .menu-toggle span:nth-child(2) {
+        top: 17px;
+    }
+
+    .menu-toggle span:nth-child(3) {
+        top: 23px;
+    }
+
+    .menu-open .menu-toggle span:nth-child(1),
+    .menu-open .menu-toggle span:nth-child(3) {
+        top: 17px;
+    }
+
+    /* Menus: one column, slightly tighter rows. */
+    .has-menu-js .portfolio-nav-links,
+    .sidebar-nav {
+        grid-template-columns: 1fr;
+    }
+
+    .has-menu-js .portfolio-nav-links {
+        max-height: calc(100vh - 56px);
+        max-height: calc(100dvh - 56px);
+        padding: 4px 10px 12px;
+    }
+
+    .has-menu-js .portfolio-nav-links a,
+    .sidebar-nav a,
+    .sidebar-bottom a {
+        min-height: 40px;
+        padding: 8px 10px;
+    }
+
+    .has-menu-js .sidebar-menu,
+    .has-menu-js .sidebar.menu-open .sidebar-menu {
+        max-height: calc(100vh - 58px);
+        max-height: calc(100dvh - 58px);
+        padding-right: 10px;
+        padding-left: 10px;
+    }
+
+    /* ---------- Page spacing ---------- */
+
+    .portfolio-hero,
+    .portfolio-section,
+    .about-section,
+    .contact-section,
+    .certificates-section {
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+
+    .portfolio-section {
+        padding-top: 48px;
+        padding-bottom: 48px;
+    }
+
+    .portfolio-hero {
+        padding-top: 36px;
+        padding-bottom: 40px;
+    }
+
+    .section-heading {
+        margin-bottom: 24px;
+    }
+
+    .dashboard-content {
+        padding: 16px 10px;
+    }
+
+    .dashboard-section,
+    .dashboard-content > .project-editor-card,
+    .edit-project-container {
+        padding: 14px 12px;
+    }
+
+    .contact-form {
+        padding: 14px;
+    }
+
+    .portfolio-project-content,
+    .certificate-content {
+        padding: 16px;
+    }
+
+    /* ---------- Dashboard stats: one compact row instead of three tall cards ---------- */
+
+    .dashboard-stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+    }
+
+    .stat-card,
+    .stat-card:last-child {
+        grid-column: auto;
+        min-height: 0;
+        flex-direction: column;
+        gap: 2px;
+        padding: 10px 4px;
+        text-align: center;
+    }
+
+    .stat-icon {
+        display: none;
+    }
+
+    .stat-card span {
+        font-size: 11px;
+    }
+
+    .stat-card strong {
+        font-size: 18px;
+    }
+
+    /* ---------- Messages: date sits under the sender, not indented ---------- */
+
+    .message-date {
+        width: auto;
+        margin-left: 0;
+    }
+
+    /* ---------- Pictures and previews fit the narrow width ---------- */
+
+    .certificate-photo-preview {
+        width: 100%;
+        max-width: 168px;
+    }
+
+    .about-image {
+        max-width: 100%;
+    }
+
+    /* ---------- Login ---------- */
+
+    .login-container {
+        padding: 12px;
+    }
+
+    .login-box {
+        padding: 24px 16px;
+    }
+
+    .login-box h1 {
+        font-size: 22px;
+    }
+}
+
+/* Sideways phones and other very short screens: slimmer sticky bars,
+   so they do not cover half the screen. */
+@media (max-height: 420px) and (orientation: landscape) {
+    .has-menu-js .portfolio-nav {
+        min-height: 52px;
+        padding-top: 6px;
+        padding-bottom: 6px;
+    }
+
+    .sidebar {
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .has-menu-js .portfolio-nav-links {
+        max-height: calc(100vh - 52px);
+        max-height: calc(100dvh - 52px);
+    }
+
+    .has-menu-js .sidebar-menu,
+    .has-menu-js .sidebar.menu-open .sidebar-menu {
+        max-height: calc(100vh - 56px);
+        max-height: calc(100dvh - 56px);
+    }
+
+    .portfolio-hero {
+        padding-top: 28px;
+        padding-bottom: 32px;
+    }
+
+    .login-container {
+        align-items: flex-start;
+    }
+}
