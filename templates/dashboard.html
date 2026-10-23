@@ -202,7 +202,7 @@
                     <div class="profile-picture-preview">
                         {% if profile.picture %}
                             <img
-                                src="{{ url_for('static', filename='uploads/' + profile.picture) }}"
+                                src="{{ media_url(profile.picture) }}"
                                 alt="Profile picture"
                             >
                         {% else %}

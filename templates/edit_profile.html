@@ -20,6 +20,7 @@
     <script src="{{ url_for('static', filename='theme.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='menu.js') }}"></script>
+    {% if direct_uploads %}<script src="{{ url_for('static', filename='direct-upload.js') }}" defer></script>{% endif %}
 
 </head>
 
@@ -99,7 +100,7 @@
                             <div class="profile-picture-preview hero-picture-preview" id="hero-picture-preview">
                                 {% if profile.hero_picture %}
                                     <img
-                                        src="{{ url_for('static', filename='uploads/' + profile.hero_picture) }}"
+                                        src="{{ media_url(profile.hero_picture) }}"
                                         alt="Current formal picture"
                                     >
                                 {% else %}
@@ -211,7 +212,7 @@
                             <div class="profile-picture-preview" id="picture-preview">
                                 {% if profile.picture %}
                                     <img
-                                        src="{{ url_for('static', filename='uploads/' + profile.picture) }}"
+                                        src="{{ media_url(profile.picture) }}"
                                         alt="Current profile picture"
                                     >
                                 {% else %}

@@ -102,7 +102,7 @@
 
                 <div class="hero-photo">
                     <img
-                        src="{{ url_for('static', filename='uploads/' + profile.hero_picture) }}"
+                        src="{{ media_url(profile.hero_picture) }}"
                         alt="{{ profile.hero_name }}"
                     >
                 </div>
@@ -151,7 +151,7 @@
 
                     <img
                         class="about-photo"
-                        src="{{ url_for('static', filename='uploads/' + profile.picture) }}"
+                        src="{{ media_url(profile.picture) }}"
                         alt="Miki G. Matsui"
                     >
 

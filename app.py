@@ -20,18 +20,22 @@ How the four OOP principles are used:
                   services each view receives).
 """
 
+import json
 import os
 import re
 import secrets
+import shutil
 import uuid
 from abc import ABC, abstractmethod
 from datetime import date
 from functools import wraps
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
+import requests
 from flask import (
     Flask,
     flash,
+    jsonify,
     redirect,
     render_template,
     request,
@@ -39,7 +43,7 @@ from flask import (
     url_for
 )
 from flask.views import MethodView
-from mysql.connector import Error as MySQLError
+from psycopg import Error as DatabaseError
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -99,8 +103,68 @@ class MediaFile:
         return "file"
 
 
-class UploadStorage:
-    """Saves and removes files in the upload folder.
+class StorageError(OSError):
+    """A file could not be saved to, read from or removed from storage.
+
+    It is an OSError, so the views' existing ``except OSError`` handling
+    covers local disks and Supabase Storage alike.
+    """
+
+
+class FileStorage(ABC):
+    """Where uploaded files live (abstraction).
+
+    ``LocalStorage`` keeps them in static/uploads; ``SupabaseStorage``
+    keeps them in a Supabase Storage bucket. Views only use the methods
+    below, so they work the same with either (polymorphism).
+    """
+
+    # True when the browser may upload straight to the storage.
+    supports_direct_upload = False
+
+    @abstractmethod
+    def write(self, filename, stream, content_type):
+        """Store the bytes from ``stream`` under ``filename``."""
+
+    @abstractmethod
+    def remove(self, filename):
+        """Delete ``filename``; missing files are ignored."""
+
+    @abstractmethod
+    def url(self, filename):
+        """Public URL the browser uses to show ``filename``."""
+
+    def size_of(self, filename):
+        """Size in bytes of a stored file, or None if it does not exist."""
+        return None
+
+    def save_all(self, validated):
+        """Store validated uploads; on failure removes what was stored and re-raises.
+
+        ``validated`` is a list of (IncomingFile, file name) pairs. Returns
+        the stored file names, for ``discard`` if a later step fails.
+        """
+        saved = []
+        try:
+            for incoming, filename in validated:
+                incoming.store(self, filename)
+                saved.append(filename)
+        except OSError:
+            self.discard(saved)
+            raise
+        return saved
+
+    def discard(self, filenames):
+        """Best-effort removal of files that are no longer needed."""
+        for filename in filenames:
+            try:
+                self.remove(filename)
+            except OSError:
+                pass
+
+
+class LocalStorage(FileStorage):
+    """Files in the app's static/uploads folder (local development).
 
     The folder is read from the app config on every use, so changing
     ``app.config["UPLOAD_FOLDER"]`` takes effect immediately.
@@ -113,35 +177,27 @@ class UploadStorage:
     def folder(self):
         return self._app.config["UPLOAD_FOLDER"]
 
-    def path_for(self, filename):
-        return os.path.join(self.folder, filename)
+    def _path(self, filename):
+        upload_folder = os.path.realpath(self.folder)
+        file_path = os.path.realpath(os.path.join(upload_folder, filename))
+        if os.path.commonpath((upload_folder, file_path)) != upload_folder:
+            return None
+        return file_path
 
-    def save_all(self, validated):
-        """Save validated uploads; on failure removes what was saved and re-raises."""
-        saved_paths = []
-        try:
-            for upload, filename in validated:
-                path = self.path_for(filename)
-                upload.save(path)
-                saved_paths.append(path)
-        except OSError:
-            self.discard(saved_paths)
-            raise
-        return saved_paths
-
-    @staticmethod
-    def discard(paths):
-        for path in paths:
-            if os.path.exists(path):
-                os.remove(path)
+    def write(self, filename, stream, content_type):
+        path = self._path(filename)
+        if path is None:
+            raise StorageError(f"Refused to write outside the upload folder: {filename}")
+        os.makedirs(self.folder, exist_ok=True)
+        with open(path, "wb") as target:
+            shutil.copyfileobj(stream, target)
 
     def remove(self, filename):
         if not filename:
             return
 
-        upload_folder = os.path.realpath(self.folder)
-        file_path = os.path.realpath(os.path.join(upload_folder, filename))
-        if os.path.commonpath((upload_folder, file_path)) != upload_folder:
+        file_path = self._path(filename)
+        if file_path is None:
             self._app.logger.warning(
                 "Skipped deleting media outside upload directory: %s", filename
             )
@@ -149,6 +205,253 @@ class UploadStorage:
 
         if os.path.isfile(file_path):
             os.remove(file_path)
+
+    def url(self, filename):
+        return url_for("static", filename="uploads/" + filename)
+
+    def size_of(self, filename):
+        path = self._path(filename)
+        if path is None or not os.path.isfile(path):
+            return None
+        return os.path.getsize(path)
+
+
+class SupabaseStorage(FileStorage):
+    """Files in a Supabase Storage bucket (used on Vercel).
+
+    Talks to the Storage REST API with the service role key, which never
+    leaves the server. The bucket is public-read, so images load straight
+    from Supabase without going through Flask.
+    """
+
+    supports_direct_upload = True
+    TIMEOUT = 30
+
+    def __init__(self, project_url, service_key, bucket):
+        self._base = project_url.rstrip("/") + "/storage/v1"
+        self._bucket = bucket
+        self._headers = {
+            "Authorization": f"Bearer {service_key}",
+            "apikey": service_key
+        }
+
+    def _object_path(self, filename):
+        return f"{self._bucket}/{quote(filename)}"
+
+    def _request(self, method, path, **kwargs):
+        headers = dict(self._headers, **kwargs.pop("headers", {}))
+        try:
+            return requests.request(
+                method,
+                f"{self._base}/{path}",
+                headers=headers,
+                timeout=self.TIMEOUT,
+                **kwargs
+            )
+        except requests.RequestException as error:
+            raise StorageError(f"Supabase Storage is unreachable: {error}") from error
+
+    def write(self, filename, stream, content_type):
+        response = self._request(
+            "POST",
+            f"object/{self._object_path(filename)}",
+            data=stream.read(),
+            headers={
+                "Content-Type": content_type or "application/octet-stream",
+                "x-upsert": "false"
+            }
+        )
+        if response.status_code >= 300:
+            raise StorageError(
+                f"Supabase refused {filename}: {response.status_code} {response.text[:200]}"
+            )
+
+    def remove(self, filename):
+        if not filename:
+            return
+        response = self._request("DELETE", f"object/{self._object_path(filename)}")
+        # 400/404 mean the file is already gone, which is what we wanted.
+        if response.status_code >= 300 and response.status_code not in (400, 404):
+            raise StorageError(
+                f"Supabase could not delete {filename}: {response.status_code}"
+            )
+
+    def url(self, filename):
+        return f"{self._base}/object/public/{self._object_path(filename)}"
+
+    def size_of(self, filename):
+        response = self._request("GET", f"object/info/{self._object_path(filename)}")
+        if response.status_code != 200:
+            return None
+        info = response.json()
+        size = info.get("size")
+        if size is None:
+            size = (info.get("metadata") or {}).get("size")
+        return int(size) if size is not None else None
+
+    def signed_upload_url(self, filename):
+        """A one-time URL the browser can PUT this file to."""
+        response = self._request(
+            "POST", f"object/upload/sign/{self._object_path(filename)}"
+        )
+        if response.status_code != 200:
+            raise StorageError(
+                f"Supabase could not sign an upload: {response.status_code} {response.text[:200]}"
+            )
+        return self._base + response.json()["url"]
+
+
+# =========================================================
+# INCOMING FILES (abstraction + polymorphism)
+# =========================================================
+
+class IncomingFile(ABC):
+    """A file submitted with a form, wherever its bytes currently are."""
+
+    @property
+    @abstractmethod
+    def filename(self):
+        """The name the file had on the visitor's computer."""
+
+    @abstractmethod
+    def size(self):
+        """Size in bytes, or None if it cannot be read."""
+
+    @abstractmethod
+    def stored_name(self, extension):
+        """The name to keep it under in storage."""
+
+    @abstractmethod
+    def store(self, storage, filename):
+        """Make sure the file is in ``storage`` under ``filename``."""
+
+
+class FormUpload(IncomingFile):
+    """A file sent to Flask inside the form (local development, small files)."""
+
+    def __init__(self, upload):
+        self._upload = upload
+
+    @property
+    def filename(self):
+        return self._upload.filename
+
+    def size(self):
+        try:
+            self._upload.stream.seek(0, os.SEEK_END)
+            size = self._upload.stream.tell()
+            self._upload.stream.seek(0)
+        except (AttributeError, OSError):
+            return None
+        return size
+
+    def stored_name(self, extension):
+        return f"{uuid.uuid4().hex}{extension}"
+
+    def store(self, storage, filename):
+        self._upload.stream.seek(0)
+        storage.write(filename, self._upload.stream, self._upload.mimetype)
+
+
+class DirectUpload(IncomingFile):
+    """A file the browser already uploaded straight to Supabase Storage.
+
+    This avoids Vercel's 4.5 MB request limit. Flask chose its storage
+    name when it signed the upload, so ``store`` only checks it arrived.
+    """
+
+    def __init__(self, storage, stored_as, original_name):
+        self._storage = storage
+        self._stored_as = stored_as
+        self._original_name = original_name
+
+    @property
+    def filename(self):
+        return self._original_name
+
+    def size(self):
+        return self._storage.size_of(self._stored_as)
+
+    def stored_name(self, extension):
+        return self._stored_as
+
+    def store(self, storage, filename):
+        if storage.size_of(filename) is None:
+            raise StorageError(f"The uploaded file is missing: {filename}")
+
+
+class IncomingFiles:
+    """Collects the files of one form field from the current request.
+
+    Direct uploads arrive as hidden "<field>__direct" inputs holding the
+    storage name Flask issued. Only names this session asked for are
+    accepted, so a form cannot point at files it did not upload.
+    """
+
+    SESSION_KEY = "direct_uploads"
+    MAX_REMEMBERED = 40
+
+    def __init__(self, storage):
+        self._storage = storage
+
+    @staticmethod
+    def _parse(raw):
+        try:
+            entry = json.loads(raw)
+            return str(entry["stored_as"]), str(entry.get("original") or entry["stored_as"])
+        except (ValueError, KeyError, TypeError):
+            return None
+
+    def remember(self, stored_as):
+        issued = session.get(self.SESSION_KEY, [])
+        session[self.SESSION_KEY] = (issued + [stored_as])[-self.MAX_REMEMBERED:]
+
+    def forget(self, stored_names):
+        issued = session.get(self.SESSION_KEY, [])
+        session[self.SESSION_KEY] = [name for name in issued if name not in stored_names]
+
+    def all(self, field):
+        files = [
+            FormUpload(upload)
+            for upload in request.files.getlist(field)
+            if upload and upload.filename
+        ]
+
+        issued = set(session.get(self.SESSION_KEY, []))
+        for raw in request.form.getlist(f"{field}__direct"):
+            parsed = self._parse(raw)
+            if parsed and parsed[0] in issued:
+                files.append(DirectUpload(self._storage, *parsed))
+
+        return files
+
+    def one(self, field):
+        files = self.all(field)
+        return files[0] if files else None
+
+    def _direct_names(self):
+        issued = set(session.get(self.SESSION_KEY, []))
+        names = []
+        for key, raw_values in request.form.lists():
+            if key.endswith("__direct"):
+                for raw in raw_values:
+                    parsed = self._parse(raw)
+                    if parsed and parsed[0] in issued:
+                        names.append(parsed[0])
+        return names
+
+    def committed(self):
+        """The request saved its direct uploads: stop tracking them."""
+        names = self._direct_names()
+        if names:
+            self.forget(names)
+
+    def discard_unused(self):
+        """The request failed: delete the files the browser uploaded for it."""
+        names = self._direct_names()
+        if names:
+            self._storage.discard(names)
+            self.forget(names)
 
 
 # =========================================================
@@ -182,27 +485,35 @@ class UploadValidator(ABC):
     def size_error(self):
         """Message shown when the file is too large."""
 
-    def validate(self, upload):
-        """Return (new unique file name, None) or (None, error message)."""
-        if not upload or not upload.filename:
-            return None, None
-
-        safe_name = secure_filename(upload.filename)
+    def check(self, filename, size):
+        """Return (lowercase extension, None) or (None, error message)."""
+        safe_name = secure_filename(filename or "")
         extension = os.path.splitext(safe_name)[1].lower()
         if not safe_name or extension not in self.extensions:
             return None, self.type_error
 
-        try:
-            upload.stream.seek(0, os.SEEK_END)
-            size = upload.stream.tell()
-            upload.stream.seek(0)
-        except (AttributeError, OSError):
+        if size is None:
             return None, "The selected file could not be read."
 
         if size > self.max_bytes:
             return None, self.size_error
 
-        return f"{uuid.uuid4().hex}{extension}", None
+        return extension, None
+
+    def validate(self, upload):
+        """Return (file name to store it under, None) or (None, error message).
+
+        ``upload`` is an IncomingFile: sent with the form or already
+        uploaded to storage by the browser.
+        """
+        if not upload or not upload.filename:
+            return None, None
+
+        extension, error = self.check(upload.filename, upload.size())
+        if error:
+            return None, error
+
+        return upload.stored_name(extension), None
 
 
 class ProjectMediaValidator(UploadValidator):
@@ -506,12 +817,10 @@ class Repository(ABC):
 
 
 class AdminRepository(Repository):
-    # Admin accounts may live in any of these tables.
-    CANDIDATE_TABLES = ("admins", "admin", "users", "user")
 
     @property
     def table_name(self):
-        return self.CANDIDATE_TABLES[0]
+        return "admins"
 
     def find_by_username(self, username):
         username = (username or "").strip()
@@ -519,25 +828,16 @@ class AdminRepository(Repository):
             return None
 
         connection = self._connect()
-        cursor = connection.cursor(dictionary=True)
-
-        for table_name in self.CANDIDATE_TABLES:
-            try:
-                cursor.execute(
-                    f"SELECT * FROM `{table_name}` WHERE username = %s LIMIT 1",
-                    (username,)
-                )
-                admin = cursor.fetchone()
-                if admin:
-                    cursor.close()
-                    connection.close()
-                    return admin
-            except Exception:
-                continue
-
-        cursor.close()
-        connection.close()
-        return None
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                "SELECT * FROM admins WHERE username = %s LIMIT 1",
+                (username,)
+            )
+            return cursor.fetchone()
+        finally:
+            cursor.close()
+            connection.close()
 
 
 class ProjectRepository(Repository):
@@ -553,6 +853,7 @@ class ProjectRepository(Repository):
             INSERT INTO projects
             (title, description, technologies, project_link, created_at)
             VALUES (%s, %s, %s, %s, %s)
+            RETURNING id
             """,
             (
                 values["title"],
@@ -562,7 +863,7 @@ class ProjectRepository(Repository):
                 values["created_at"]
             )
         )
-        return cursor.lastrowid
+        return cursor.fetchone()["id"]
 
     def update(self, cursor, project_id, values):
         cursor.execute(
@@ -609,62 +910,21 @@ class ProjectRepository(Repository):
 class ProjectMediaRepository(Repository):
     """The gallery files of every project."""
 
-    # Shared by all instances: the table only needs creating once per run.
-    _schema_ready = False
+    def __init__(self, connection_factory, storage):
+        super().__init__(connection_factory)
+        self._storage = storage
 
     @property
     def table_name(self):
         return "project_media"
 
-    def ensure_schema(self, connection):
-        if ProjectMediaRepository._schema_ready:
-            return
-
-        cursor = connection.cursor()
-        try:
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS project_media (
-                    id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-                    project_id INT NOT NULL,
-                    filename VARCHAR(255) NOT NULL,
-                    position INT NOT NULL DEFAULT 0,
-                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    KEY project_media_project (project_id),
-                    CONSTRAINT fk_project_media_project
-                        FOREIGN KEY (project_id) REFERENCES projects (id)
-                        ON DELETE CASCADE
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
-                """
-            )
-
-            # Projects used to hold a single file in projects.media. Move those
-            # into the gallery table once, in one transaction so nothing is
-            # copied twice if something fails halfway.
-            connection.start_transaction()
-            cursor.execute(
-                """
-                INSERT INTO project_media (project_id, filename, position)
-                SELECT id, media, 0
-                FROM projects
-                WHERE media IS NOT NULL AND media <> ''
-                """
-            )
-            cursor.execute("UPDATE projects SET media = NULL WHERE media IS NOT NULL")
-            connection.commit()
-        finally:
-            cursor.close()
-
-        ProjectMediaRepository._schema_ready = True
-
     def load_galleries(self, connection, project_ids):
         """Return {project_id: [{"id", "filename", "kind"}, ...]} in display order."""
-        self.ensure_schema(connection)
         galleries = {project_id: [] for project_id in project_ids}
         if not project_ids:
             return galleries
 
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
         try:
             placeholders = ", ".join(["%s"] * len(project_ids))
             cursor.execute(
@@ -695,10 +955,7 @@ class ProjectMediaRepository(Repository):
         )
         for project in projects:
             project["gallery"] = [
-                dict(
-                    media,
-                    url=url_for("static", filename="uploads/" + media["filename"])
-                )
+                dict(media, url=self._storage.url(media["filename"]))
                 for media in galleries[project["id"]]
             ]
 
@@ -756,75 +1013,15 @@ class ProfileRepository(Repository):
         "skills": "Digital Art, Programming, Speed typist, Graphic Design, Animation"
     }
 
-    # Columns added after the profile table was first released; older
-    # databases get them through ALTER TABLE in ensure_schema().
-    ADDED_COLUMNS = {
-        "hero_name": "VARCHAR(60) DEFAULT NULL",
-        "hero_intro": "TEXT DEFAULT NULL",
-        "hero_picture": "VARCHAR(255) DEFAULT NULL"
-    }
-
-    # Shared by all instances: the table only needs checking once per run.
-    _schema_ready = False
-
     @property
     def table_name(self):
         return "profile"
 
-    def ensure_schema(self, cursor):
-        if ProfileRepository._schema_ready:
-            return
-
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS profile (
-                id INT NOT NULL PRIMARY KEY,
-                description TEXT NOT NULL,
-                picture VARCHAR(255) DEFAULT NULL,
-                skills TEXT NOT NULL,
-                updated_at TIMESTAMP NOT NULL
-                    DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
-            """
-        )
-
-        cursor.execute("SHOW COLUMNS FROM profile")
-        existing_columns = {
-            (column["Field"] if isinstance(column, dict) else column[0])
-            for column in cursor.fetchall()
-        }
-        for column, definition in self.ADDED_COLUMNS.items():
-            if column not in existing_columns:
-                cursor.execute(f"ALTER TABLE profile ADD COLUMN `{column}` {definition}")
-
-        cursor.execute(
-            """
-            INSERT IGNORE INTO profile (id, description, picture, skills)
-            VALUES (1, %s, %s, %s)
-            """,
-            (
-                self.DEFAULTS["description"],
-                self.DEFAULTS["picture"],
-                self.DEFAULTS["skills"]
-            )
-        )
-        cursor.execute(
-            """
-            UPDATE profile
-            SET hero_name = COALESCE(hero_name, %s),
-                hero_intro = COALESCE(hero_intro, %s)
-            WHERE id = 1
-            """,
-            (self.DEFAULTS["hero_name"], self.DEFAULTS["hero_intro"])
-        )
-        ProfileRepository._schema_ready = True
-
     def load(self):
         connection = self._connect()
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
 
         try:
-            self.ensure_schema(cursor)
             cursor.execute(
                 """
                 SELECT hero_name, hero_intro, hero_picture,
@@ -863,7 +1060,8 @@ class ProfileRepository(Repository):
                 hero_picture = %s,
                 description = %s,
                 picture = %s,
-                skills = %s
+                skills = %s,
+                updated_at = now() AT TIME ZONE 'Asia/Manila'
             WHERE id = 1
             """,
             (
@@ -880,34 +1078,16 @@ class ProfileRepository(Repository):
 class CertificateRepository(Repository):
     """Certificates shown in the portfolio's Certificates section."""
 
-    # Shared by all instances: the table only needs creating once per run.
-    _schema_ready = False
+    def __init__(self, connection_factory, storage):
+        super().__init__(connection_factory)
+        self._storage = storage
 
     @property
     def table_name(self):
         return "certificates"
 
-    def ensure_schema(self, cursor):
-        if CertificateRepository._schema_ready:
-            return
-
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS certificates (
-                id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-                title VARCHAR(160) NOT NULL,
-                description TEXT NOT NULL,
-                photo VARCHAR(255) DEFAULT NULL,
-                obtained_at DATE NOT NULL,
-                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci
-            """
-        )
-        CertificateRepository._schema_ready = True
-
     def fetch_latest(self, cursor):
         """All certificates, most recently obtained first."""
-        self.ensure_schema(cursor)
         cursor.execute(
             """
             SELECT *
@@ -918,11 +1098,9 @@ class CertificateRepository(Repository):
         return cursor.fetchall()
 
     def find(self, cursor, certificate_id):
-        self.ensure_schema(cursor)
         return self.find_by_id(cursor, certificate_id)
 
     def create(self, cursor, values, photo):
-        self.ensure_schema(cursor)
         cursor.execute(
             """
             INSERT INTO certificates (title, description, photo, obtained_at)
@@ -950,14 +1128,13 @@ class CertificateRepository(Repository):
             )
         )
 
-    @staticmethod
-    def for_display(certificate):
+    def for_display(self, certificate):
         """Add the photo URL and readable dates the templates use."""
         obtained = certificate["obtained_at"]
         return dict(
             certificate,
             photo_url=(
-                url_for("static", filename="uploads/" + certificate["photo"])
+                self._storage.url(certificate["photo"])
                 if certificate["photo"] else None
             ),
             obtained_iso=obtained.isoformat(),
@@ -1001,16 +1178,17 @@ class AuthService:
 class PortfolioServices:
     """Bundles the repositories, validators and storage the views use."""
 
-    def __init__(self, flask_app, connection_factory):
+    def __init__(self, flask_app, connection_factory, storage):
         self._connection_factory = connection_factory
         self.logger = flask_app.logger
-        self.storage = UploadStorage(flask_app)
+        self.storage = storage
+        self.incoming = IncomingFiles(storage)
 
         self.projects = ProjectRepository(connection_factory)
-        self.media = ProjectMediaRepository(connection_factory)
+        self.media = ProjectMediaRepository(connection_factory, storage)
         self.profile = ProfileRepository(connection_factory)
         self.messages = MessageRepository(connection_factory)
-        self.certificates = CertificateRepository(connection_factory)
+        self.certificates = CertificateRepository(connection_factory, storage)
         self.auth = AuthService(AdminRepository(connection_factory))
 
         self.project_form = ProjectFormValidator()
@@ -1021,6 +1199,14 @@ class PortfolioServices:
         self.hero_picture = ProfilePictureValidator("hero picture")
         self.about_picture = ProfilePictureValidator()
         self.certificate_photo = CertificatePhotoValidator()
+
+        # Form field name -> the validator its files must pass.
+        self.upload_rules = {
+            "media": self.project_media,
+            "hero_picture": self.hero_picture,
+            "picture": self.about_picture,
+            "photo": self.certificate_photo
+        }
 
     def connect(self):
         return self._connection_factory()
@@ -1056,6 +1242,20 @@ class AdminPageView(PageView):
     """A page only a logged-in admin may open."""
     decorators = [login_required]
 
+    def render(self, status=None, **context):
+        # A form that failed keeps none of the files the browser uploaded
+        # straight to storage for it; the admin chooses them again.
+        if status is not None and status >= 400:
+            self._services.incoming.discard_unused()
+        return super().render(status, **context)
+
+    def dispatch_request(self, *args, **kwargs):
+        response = super().dispatch_request(*args, **kwargs)
+        # A redirect after POST means the files were saved.
+        if request.method == "POST" and getattr(response, "status_code", 200) in (301, 302, 303):
+            self._services.incoming.committed()
+        return response
+
 
 class AdminActionView(BaseView):
     """A form action only a logged-in admin may send."""
@@ -1070,7 +1270,7 @@ class HomeView(PageView):
     def get(self):
         services = self._services
         connection = services.connect()
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
 
         projects = services.projects.fetch_all(cursor, newest_first=True)
         certificates = services.certificates.fetch_latest(cursor)
@@ -1088,7 +1288,7 @@ class HomeView(PageView):
             projects=projects,
             project_data=project_data,
             certificates=[
-                CertificateRepository.for_display(certificate)
+                services.certificates.for_display(certificate)
                 for certificate in certificates
             ],
             profile=services.profile.load()
@@ -1113,7 +1313,7 @@ class SendMessageView(BaseView):
             cursor = connection.cursor()
             services.messages.create(cursor, values)
             connection.commit()
-        except MySQLError:
+        except DatabaseError:
             services.logger.exception("Could not save contact message")
             if connection is not None:
                 connection.rollback()
@@ -1166,7 +1366,7 @@ class DashboardView(AdminPageView):
     def get(self):
         services = self._services
         connection = services.connect()
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
 
         projects = services.projects.fetch_all(cursor, newest_first=True)
         message_count = services.messages.count(cursor)
@@ -1183,7 +1383,7 @@ class DashboardView(AdminPageView):
             message_count=message_count,
             messages=messages,
             certificates=[
-                CertificateRepository.for_display(certificate)
+                services.certificates.for_display(certificate)
                 for certificate in certificates
             ],
             profile=services.profile.load()
@@ -1202,7 +1402,7 @@ class AddProjectView(AdminPageView):
         services = self._services
         values, error = services.project_form.validate(request.form)
         uploads, media_error = services.project_media.validate_many(
-            request.files.getlist("media")
+            services.incoming.all("media")
         )
         error = error or media_error
 
@@ -1224,9 +1424,7 @@ class AddProjectView(AdminPageView):
 
         try:
             connection = services.connect()
-            services.media.ensure_schema(connection)
             cursor = connection.cursor()
-            connection.start_transaction()
             project_id = services.projects.create(cursor, values)
             services.media.insert(
                 cursor,
@@ -1234,7 +1432,7 @@ class AddProjectView(AdminPageView):
                 [filename for _, filename in uploads]
             )
             connection.commit()
-        except MySQLError:
+        except DatabaseError:
             services.logger.exception("Could not create portfolio project")
             if connection is not None:
                 connection.rollback()
@@ -1261,7 +1459,7 @@ class EditProjectView(AdminPageView):
         """Return (connection, cursor, project with gallery) or None if missing."""
         services = self._services
         connection = services.connect()
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
 
         project = services.projects.find_by_id(cursor, project_id)
 
@@ -1300,7 +1498,7 @@ class EditProjectView(AdminPageView):
             if value.isdigit()
         } & {media["id"] for media in gallery}
         uploads, media_error = services.project_media.validate_many(
-            request.files.getlist("media"),
+            services.incoming.all("media"),
             existing_count=len(gallery) - len(remove_ids)
         )
         error = error or media_error
@@ -1328,7 +1526,6 @@ class EditProjectView(AdminPageView):
         ]
 
         try:
-            connection.start_transaction()
             services.projects.update(cursor, project_id, values)
 
             if remove_ids:
@@ -1343,7 +1540,7 @@ class EditProjectView(AdminPageView):
                 )
 
             connection.commit()
-        except MySQLError:
+        except DatabaseError:
             services.logger.exception("Could not update portfolio project %s", project_id)
             connection.rollback()
             services.storage.discard(saved_paths)
@@ -1374,7 +1571,7 @@ class DeleteProjectView(AdminActionView):
     def post(self, project_id):
         services = self._services
         connection = services.connect()
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
 
         project = services.projects.find_by_id(cursor, project_id)
 
@@ -1390,7 +1587,7 @@ class DeleteProjectView(AdminActionView):
             # The project's project_media rows are removed by ON DELETE CASCADE.
             services.projects.delete_by_id(cursor, project_id)
             connection.commit()
-        except MySQLError:
+        except DatabaseError:
             services.logger.exception("Could not delete portfolio project %s", project_id)
             connection.rollback()
             cursor.close()
@@ -1431,11 +1628,15 @@ class EditProfileView(AdminPageView):
         profile = services.profile.load()
 
         values, error = services.profile_form.validate(request.form)
+        uploads = {
+            "hero_picture": services.incoming.one("hero_picture"),
+            "picture": services.incoming.one("picture")
+        }
         new_hero_picture, hero_picture_error = services.hero_picture.validate(
-            request.files.get("hero_picture")
+            uploads["hero_picture"]
         )
         new_picture, picture_error = services.about_picture.validate(
-            request.files.get("picture")
+            uploads["picture"]
         )
         error = error or hero_picture_error or picture_error
 
@@ -1459,20 +1660,17 @@ class EditProfileView(AdminPageView):
             field: new_name or kept_name
             for field, (new_name, kept_name) in pictures.items()
         }
-        saved_paths = []
         connection = None
         cursor = None
 
         try:
-            for field, (new_name, _) in pictures.items():
-                if new_name:
-                    path = services.storage.path_for(new_name)
-                    request.files[field].save(path)
-                    saved_paths.append(path)
+            saved_paths = services.storage.save_all([
+                (uploads[field], new_name)
+                for field, (new_name, _) in pictures.items()
+                if new_name
+            ])
         except OSError:
             services.logger.exception("Could not save profile pictures")
-            for path in saved_paths:
-                os.remove(path)
             return self.render(
                 500,
                 profile=profile,
@@ -1485,7 +1683,7 @@ class EditProfileView(AdminPageView):
             cursor = connection.cursor()
             services.profile.update(cursor, values, final_pictures)
             connection.commit()
-        except MySQLError:
+        except DatabaseError:
             services.logger.exception("Could not update profile")
             if connection is not None:
                 connection.rollback()
@@ -1525,7 +1723,7 @@ class AddCertificateView(AdminPageView):
     def post(self):
         services = self._services
         values, error = services.certificate_form.validate(request.form)
-        upload = request.files.get("photo")
+        upload = services.incoming.one("photo")
         photo, photo_error = services.certificate_photo.validate(upload)
         if not photo_error and not photo:
             photo_error = "Choose a photo of your certificate."
@@ -1552,7 +1750,7 @@ class AddCertificateView(AdminPageView):
             cursor = connection.cursor()
             services.certificates.create(cursor, values, photo)
             connection.commit()
-        except MySQLError:
+        except DatabaseError:
             services.logger.exception("Could not create certificate")
             if connection is not None:
                 connection.rollback()
@@ -1577,7 +1775,7 @@ class EditCertificateView(AdminPageView):
 
     def _find(self, certificate_id):
         connection = self._services.connect()
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
         try:
             certificate = self._services.certificates.find(cursor, certificate_id)
         finally:
@@ -1596,7 +1794,7 @@ class EditCertificateView(AdminPageView):
             return self._not_found()
 
         return self.render(
-            certificate=CertificateRepository.for_display(certificate),
+            certificate=self._services.certificates.for_display(certificate),
             form={}
         )
 
@@ -1606,9 +1804,9 @@ class EditCertificateView(AdminPageView):
             return self._not_found()
 
         services = self._services
-        shown = CertificateRepository.for_display(certificate)
+        shown = services.certificates.for_display(certificate)
         values, error = services.certificate_form.validate(request.form)
-        upload = request.files.get("photo")
+        upload = services.incoming.one("photo")
         new_photo, photo_error = services.certificate_photo.validate(upload)
         error = error or photo_error
 
@@ -1641,7 +1839,7 @@ class EditCertificateView(AdminPageView):
                 new_photo or certificate["photo"]
             )
             connection.commit()
-        except MySQLError:
+        except DatabaseError:
             services.logger.exception("Could not update certificate %s", certificate_id)
             if connection is not None:
                 connection.rollback()
@@ -1676,7 +1874,7 @@ class DeleteCertificateView(AdminActionView):
     def post(self, certificate_id):
         services = self._services
         connection = services.connect()
-        cursor = connection.cursor(dictionary=True)
+        cursor = connection.cursor()
 
         certificate = services.certificates.find(cursor, certificate_id)
 
@@ -1689,7 +1887,7 @@ class DeleteCertificateView(AdminActionView):
         try:
             services.certificates.delete_by_id(cursor, certificate_id)
             connection.commit()
-        except MySQLError:
+        except DatabaseError:
             services.logger.exception("Could not delete certificate %s", certificate_id)
             connection.rollback()
             cursor.close()
@@ -1712,6 +1910,46 @@ class DeleteCertificateView(AdminActionView):
         return redirect("/dashboard#certificates")
 
 
+# ---------- Direct uploads ----------
+
+class SignUploadView(AdminActionView):
+    """Gives the browser a one-time URL to upload a file straight to storage.
+
+    Used on Vercel, where a request to Flask can be at most 4.5 MB. The
+    file is checked with the same validator its form field uses, and
+    Flask picks the storage name, so the browser cannot overwrite files.
+    """
+
+    def post(self):
+        services = self._services
+        if not services.storage.supports_direct_upload:
+            return jsonify(error="Direct uploads are not available."), 404
+
+        data = request.get_json(silent=True) or {}
+        validator = services.upload_rules.get(data.get("field"))
+        if validator is None:
+            return jsonify(error="Unknown upload field."), 400
+
+        try:
+            size = int(data.get("size"))
+        except (TypeError, ValueError):
+            size = None
+
+        extension, error = validator.check(data.get("filename"), size)
+        if error:
+            return jsonify(error=f"{data.get('filename')}: {error}"), 400
+
+        stored_as = f"{uuid.uuid4().hex}{extension}"
+        try:
+            upload_url = services.storage.signed_upload_url(stored_as)
+        except OSError:
+            services.logger.exception("Could not sign a direct upload")
+            return jsonify(error="The upload could not be started. Please try again."), 502
+
+        services.incoming.remember(stored_as)
+        return jsonify(stored_as=stored_as, upload_url=upload_url)
+
+
 # ---------- Messages ----------
 
 class DeleteMessageView(AdminActionView):
@@ -1724,7 +1962,7 @@ class DeleteMessageView(AdminActionView):
         try:
             deleted = services.messages.delete_by_id(cursor, message_id) > 0
             connection.commit()
-        except MySQLError:
+        except DatabaseError:
             services.logger.exception("Could not delete contact message %s", message_id)
             connection.rollback()
             cursor.close()
@@ -1763,13 +2001,16 @@ class PortfolioApp:
         ("/delete-certificate/<int:certificate_id>", DeleteCertificateView, "delete_certificate"),
         ("/send-message", SendMessageView, "send_message"),
         ("/delete-message/<int:message_id>", DeleteMessageView, "delete_message"),
+        ("/upload-url", SignUploadView, "upload_url"),
         ("/logout", LogoutView, "logout"),
     )
 
-    def __init__(self, connection_factory=get_db_connection):
+    def __init__(self, connection_factory=get_db_connection, storage=None):
         self._flask = Flask(__name__)
         self._configure()
-        self._services = PortfolioServices(self._flask, connection_factory)
+        storage = storage or self._choose_storage()
+        self._services = PortfolioServices(self._flask, connection_factory, storage)
+        self._register_template_helpers(storage)
         self._register_routes()
 
     @property
@@ -1786,7 +2027,28 @@ class PortfolioApp:
             "static",
             "uploads"
         )
-        os.makedirs(flask_app.config["UPLOAD_FOLDER"], exist_ok=True)
+        if os.getenv("VERCEL"):
+            # Vercel serves the site over HTTPS only.
+            flask_app.config["SESSION_COOKIE_SECURE"] = True
+
+    def _choose_storage(self):
+        """Supabase Storage when it is configured, else the local folder."""
+        project_url = os.getenv("SUPABASE_URL")
+        service_key = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        if project_url and service_key:
+            return SupabaseStorage(
+                project_url,
+                service_key,
+                os.getenv("SUPABASE_BUCKET", "portfolio-media")
+            )
+        return LocalStorage(self._flask)
+
+    def _register_template_helpers(self, storage):
+        # {{ media_url(name) }} works with either storage.
+        self._flask.jinja_env.globals.update(
+            media_url=storage.url,
+            direct_uploads=storage.supports_direct_upload
+        )
 
     def _register_routes(self):
         for rule, view_class, endpoint in self.ROUTES:

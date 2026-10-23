@@ -33,6 +33,7 @@
     <script src="{{ url_for('static', filename='theme.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='menu.js') }}"></script>
+    {% if direct_uploads %}<script src="{{ url_for('static', filename='direct-upload.js') }}" defer></script>{% endif %}
 
 </head>
 
