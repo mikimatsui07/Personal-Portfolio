@@ -1,0 +1,19 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Secrets (database passwords, API keys)
+.env
+.env.*
+
+# Files uploaded through the admin pages (moving to Supabase Storage)
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

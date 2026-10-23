@@ -22,6 +22,7 @@ How the four OOP principles are used:
 
 import os
 import re
+import secrets
 import uuid
 from abc import ABC, abstractmethod
 from datetime import date
@@ -1777,7 +1778,9 @@ class PortfolioApp:
 
     def _configure(self):
         flask_app = self._flask
-        flask_app.secret_key = os.getenv("FLASK_SECRET_KEY", "MikiGajoMatsui2007")
+        # Set FLASK_SECRET_KEY in production. The random fallback is only for
+        # local use: logins reset whenever the server restarts.
+        flask_app.secret_key = os.getenv("FLASK_SECRET_KEY") or secrets.token_hex(32)
         flask_app.config["UPLOAD_FOLDER"] = os.path.join(
             os.path.dirname(__file__),
             "static",
