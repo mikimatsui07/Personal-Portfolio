@@ -8241,3 +8241,240 @@ button.is-busy {
         flex-basis: 40px;
     }
 }
+
+
+/* =========================================================
+   PROJECT VIEWER — CENTERED MEDIA AND BREATHING ROOM
+   --stage-pad-x / --stage-pad-y: space around the photo inside the
+   dark stage. With several files the side space is wide enough for
+   the ‹ › buttons to sit beside the photo instead of on top of it.
+========================================================= */
+
+.viewer-media {
+    --stage-pad-x: 24px;
+    --stage-pad-y: 24px;
+}
+
+.has-many .viewer-media {
+    --stage-pad-x: 76px;
+}
+
+.viewer-stage {
+    padding: var(--stage-pad-y) var(--stage-pad-x);
+}
+
+/* Exactly the stage minus its padding, so object-fit: contain centers
+   the whole photo (an earlier 100% size pushed it off-center). */
+.viewer-stage img.viewer-item,
+.viewer-stage video.viewer-item {
+    top: var(--stage-pad-y);
+    left: var(--stage-pad-x);
+    width: calc(100% - 2 * var(--stage-pad-x));
+    height: calc(100% - 2 * var(--stage-pad-y));
+    object-position: center;
+}
+
+.viewer-prev {
+    left: 16px;
+}
+
+.viewer-next {
+    right: 16px;
+}
+
+/* Thumbnails centered under the photo; still scroll when they overflow. */
+.viewer-thumbs {
+    padding: 4px 16px 16px;
+}
+
+.viewer-thumbs > :first-child {
+    margin-left: auto;
+}
+
+.viewer-thumbs > :last-child {
+    margin-right: auto;
+}
+
+.viewer-counter {
+    top: 16px;
+    left: 16px;
+}
+
+.viewer-close {
+    top: 14px;
+    right: 14px;
+}
+
+/* ---------- Tablets and phones: a floating card, not full screen ---------- */
+
+@media (max-width: 800px) {
+    .project-viewer {
+        width: calc(100vw - 24px);
+        /* Dialogs size to their content with fit-content; "auto" would
+           stretch the card to the full screen height. */
+        height: fit-content;
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px);
+        margin: auto;
+        border-radius: 18px;
+        translate: 0 20px;
+    }
+
+    .viewer-layout {
+        height: auto;
+        max-height: calc(100vh - 24px);
+        max-height: calc(100dvh - 24px);
+    }
+
+    .viewer-media,
+    .has-many .viewer-media {
+        --stage-height: min(56vh, 460px);
+        --stage-pad-x: 18px;
+        --stage-pad-y: 18px;
+    }
+
+    .has-many .viewer-media {
+        --stage-pad-x: 58px;
+    }
+
+    .viewer-prev {
+        left: 10px;
+    }
+
+    .viewer-next {
+        right: 10px;
+    }
+
+    .viewer-info {
+        gap: 10px;
+        padding: 22px 22px 28px;
+    }
+}
+
+@media (max-width: 480px) {
+    .project-viewer {
+        width: calc(100vw - 20px);
+        border-radius: 16px;
+    }
+
+    .viewer-media,
+    .has-many .viewer-media {
+        --stage-height: min(48vh, 380px);
+        --stage-pad-x: 14px;
+        --stage-pad-y: 16px;
+    }
+
+    /* Phones also swipe, so the buttons can be small and sit on the edges. */
+    .has-many .viewer-media {
+        --stage-pad-x: 44px;
+    }
+
+    .viewer-nav {
+        width: 34px;
+        height: 34px;
+        padding-bottom: 3px;
+        font-size: 22px;
+    }
+
+    .viewer-prev {
+        left: 6px;
+    }
+
+    .viewer-next {
+        right: 6px;
+    }
+
+    .viewer-thumbs button {
+        width: 54px;
+        height: 54px;
+        flex-basis: 54px;
+    }
+
+    .viewer-info {
+        padding: 20px 18px 24px;
+    }
+}
+
+/* ---------- Flip phones and other tiny screens ---------- */
+
+@media (max-width: 300px) {
+    .project-viewer {
+        width: calc(100vw - 12px);
+        max-height: calc(100vh - 12px);
+        max-height: calc(100dvh - 12px);
+        border-radius: 12px;
+    }
+
+    .viewer-layout {
+        max-height: calc(100vh - 12px);
+        max-height: calc(100dvh - 12px);
+    }
+
+    .viewer-media,
+    .has-many .viewer-media {
+        --stage-height: min(46vh, 220px);
+        --stage-pad-x: 10px;
+        --stage-pad-y: 10px;
+    }
+
+    .has-many .viewer-media {
+        --stage-pad-x: 34px;
+    }
+
+    .viewer-nav {
+        width: 28px;
+        height: 28px;
+        font-size: 18px;
+    }
+
+    .viewer-prev {
+        left: 4px;
+    }
+
+    .viewer-next {
+        right: 4px;
+    }
+
+    .viewer-counter {
+        top: 8px;
+        left: 8px;
+        padding: 2px 8px;
+        font-size: 11px;
+    }
+
+    .viewer-close {
+        top: 6px;
+        right: 6px;
+        width: 32px;
+        height: 32px;
+        font-size: 22px;
+    }
+
+    .viewer-thumbs {
+        gap: 6px;
+        padding: 2px 8px 10px;
+    }
+
+    .viewer-thumbs button {
+        width: 42px;
+        height: 42px;
+        flex-basis: 42px;
+    }
+
+    .viewer-info {
+        padding: 14px 12px 18px;
+    }
+
+    .viewer-info h3 {
+        font-size: 18px;
+    }
+}
+
+/* Sideways phones: a short, wide stage; the text scrolls below it. */
+@media (max-height: 480px) and (orientation: landscape) {
+    .viewer-media,
+    .has-many .viewer-media {
+        --stage-height: calc(100dvh - 120px);
+        --stage-pad-y: 10px;
+    }
+}
