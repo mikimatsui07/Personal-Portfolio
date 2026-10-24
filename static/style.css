@@ -7814,3 +7814,232 @@ button.is-busy {
         align-items: flex-start;
     }
 }
+
+
+/* =========================================================
+   LEAVE WITHOUT SAVING? (static/unsaved-guard.js)
+========================================================= */
+
+.leave-dialog {
+    width: min(420px, calc(100vw - 24px));
+    max-width: none;
+    /* The global margin reset removes the auto margins that center dialogs. */
+    margin: auto;
+    padding: 26px 24px 22px;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 30px 80px rgba(30, 18, 44, 0.3);
+    color: var(--color-ink);
+    text-align: center;
+}
+
+.leave-dialog::backdrop {
+    background: rgba(28, 18, 40, 0.55);
+}
+
+.leave-dialog[open] {
+    animation: leave-dialog-in 220ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@keyframes leave-dialog-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+}
+
+.leave-dialog-icon {
+    display: grid;
+    width: 46px;
+    height: 46px;
+    margin: 0 auto 14px;
+    place-items: center;
+    border-radius: 50%;
+    background: #fff4e5;
+    color: #b26a00;
+    font-size: 22px;
+    font-weight: 800;
+}
+
+.leave-dialog h2 {
+    margin-bottom: 8px;
+    font-size: 20px;
+    letter-spacing: -0.02em;
+}
+
+.leave-dialog p {
+    color: var(--color-muted);
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.leave-dialog-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.leave-dialog-actions button {
+    min-height: 44px;
+    flex: 1 1 0;
+    padding: 10px 14px;
+    border-radius: 9px;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.leave-dialog-stay {
+    border: 0;
+    background: var(--color-primary);
+    box-shadow: 0 8px 18px rgba(120, 73, 189, 0.2);
+    color: #fff;
+}
+
+.leave-dialog-stay:hover {
+    background: var(--color-primary-dark);
+}
+
+.leave-dialog-leave {
+    border: 1px solid #f1d0d4;
+    background: #fff0f0;
+    color: #a6424c;
+}
+
+.leave-dialog-leave:hover {
+    border-color: #e8b5bb;
+    background: #ffe3e5;
+}
+
+@media (max-width: 380px) {
+    .leave-dialog {
+        padding: 22px 16px 18px;
+    }
+
+    .leave-dialog-actions {
+        flex-direction: column-reverse;
+    }
+}
+
+[data-theme="dark"] .leave-dialog {
+    background: var(--surface);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .leave-dialog::backdrop {
+    background: rgba(8, 5, 12, 0.72);
+}
+
+[data-theme="dark"] .leave-dialog-icon {
+    background: #3a2c12;
+    color: #f3c46b;
+}
+
+[data-theme="dark"] .leave-dialog-leave {
+    border-color: #5a2a31;
+    background: #3a1d22;
+    color: #f2a9b0;
+}
+
+[data-theme="dark"] .leave-dialog-leave:hover {
+    background: #4a242a;
+}
+
+
+/* =========================================================
+   LIVE UPDATES (static/live-update.js)
+========================================================= */
+
+.live-update-toast {
+    position: fixed;
+    z-index: 2500;
+    bottom: 20px;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(45, 33, 57, 0.16);
+    color: var(--color-ink);
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 12px);
+    transition: opacity 220ms ease, transform 220ms ease;
+}
+
+.live-update-toast::before {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #3fb56b;
+    box-shadow: 0 0 0 4px rgba(63, 181, 107, 0.18);
+    content: "";
+}
+
+.live-update-toast.is-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+[data-theme="dark"] .live-update-toast {
+    background: var(--surface-raised);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* A short glow on a section that just received new content. */
+@media (prefers-reduced-motion: no-preference) {
+    .just-updated {
+        animation: content-updated 1.4s ease;
+    }
+}
+
+@keyframes content-updated {
+    0% {
+        box-shadow: inset 0 0 0 9999px rgba(198, 166, 240, 0.16);
+    }
+
+    100% {
+        box-shadow: inset 0 0 0 9999px rgba(198, 166, 240, 0);
+    }
+}
+
+/* Tiny or short screens: the dialog always fits (and scrolls if needed). */
+.leave-dialog {
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    overflow-y: auto;
+}
+
+@media (max-height: 420px), (max-width: 300px) {
+    .leave-dialog {
+        padding: 16px 14px 14px;
+    }
+
+    .leave-dialog-icon {
+        display: none;
+    }
+
+    .leave-dialog h2 {
+        font-size: 17px;
+    }
+
+    .leave-dialog p {
+        font-size: 13px;
+    }
+
+    .leave-dialog-actions {
+        margin-top: 14px;
+    }
+
+    .leave-dialog-actions button {
+        min-height: 40px;
+    }
+}

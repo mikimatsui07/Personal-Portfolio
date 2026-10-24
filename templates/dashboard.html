@@ -867,6 +867,17 @@
         });
     </script>
 
+    <script>
+        // A save or delete just succeeded: tell portfolio tabs open in this
+        // browser to update right away (static/live-update.js listens).
+        if (
+            document.querySelector(".dashboard-feedback-success") &&
+            "BroadcastChannel" in window
+        ) {
+            new BroadcastChannel("portfolio-content").postMessage("changed");
+        }
+    </script>
+
 </body>
 
 </html>

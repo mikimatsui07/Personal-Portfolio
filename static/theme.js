@@ -53,11 +53,28 @@
         });
     }
 
+    // Tab icon: browsers do not redraw it when the theme changes, so swap
+    // in the matching file. A new <link> element makes them pick it up.
+    let shownIcon = null;
+
+    function syncFavicon(theme) {
+        const icon = document.querySelector('link[rel="icon"][type="image/svg+xml"]');
+        if (!icon || shownIcon === theme) {
+            return;
+        }
+        const folder = icon.href.slice(0, icon.href.lastIndexOf("/") + 1);
+        const fresh = icon.cloneNode();
+        fresh.href = `${folder}favicon-${theme}.svg`;
+        icon.replaceWith(fresh);
+        shownIcon = theme;
+    }
+
     function applyChoice(choice) {
         root.dataset.theme = resolve(choice);
         root.dataset.themeChoice = choice;
         syncSwitchers(choice);
         syncBarColor(root.dataset.theme);
+        syncFavicon(root.dataset.theme);
     }
 
     applyChoice(savedChoice());
@@ -69,9 +86,17 @@
         }
     });
 
+    // A theme picked in another tab of this site applies here too.
+    window.addEventListener("storage", event => {
+        if (event.key === STORAGE_KEY || event.key === null) {
+            applyChoice(savedChoice());
+        }
+    });
+
     document.addEventListener("DOMContentLoaded", () => {
         syncSwitchers(savedChoice());
         syncBarColor(root.dataset.theme);
+        syncFavicon(root.dataset.theme);
 
         document.querySelectorAll("[data-theme-option]").forEach(option => {
             option.addEventListener("click", () => {

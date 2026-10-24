@@ -17,6 +17,9 @@
     <script src="{{ url_for('static', filename='theme.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='menu.js') }}"></script>
+    {# Fingerprint of the shown content; live-update.js compares it with the server's. #}
+    <meta name="content-version" content="{{ content_version }}">
+    <script src="{{ url_for('static', filename='live-update.js') }}" defer></script>
 </head>
 
 <body>
@@ -786,14 +789,18 @@
             const closeButton = document.getElementById("certificate-viewer-close");
             let opener = null;
 
-            document.querySelectorAll("[data-certificate-photo]").forEach(button => {
-                button.addEventListener("click", () => {
-                    opener = button;
-                    image.src = button.dataset.certificatePhoto;
-                    image.alt = `${button.dataset.certificateTitle} certificate`;
-                    title.textContent = button.dataset.certificateTitle;
-                    viewer.showModal();
-                });
+            // One listener for the page, so certificates added by a live
+            // update open too.
+            document.addEventListener("click", event => {
+                const button = event.target.closest("[data-certificate-photo]");
+                if (!button) {
+                    return;
+                }
+                opener = button;
+                image.src = button.dataset.certificatePhoto;
+                image.alt = `${button.dataset.certificateTitle} certificate`;
+                title.textContent = button.dataset.certificateTitle;
+                viewer.showModal();
             });
 
             closeButton.addEventListener("click", () => viewer.close());

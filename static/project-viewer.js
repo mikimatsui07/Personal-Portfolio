@@ -7,7 +7,8 @@
         return;
     }
 
-    const projects = JSON.parse(dataElement.textContent);
+    // Re-read after a live update replaces the projects (live-update.js).
+    let projects = JSON.parse(dataElement.textContent);
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     // Runs `callback` once the element's own transition ends, with a timeout
@@ -38,9 +39,9 @@
     // SEE MORE / SEE LESS
     // =========================
 
-    const descriptions = Array.from(
-        document.querySelectorAll(".portfolio-project-description")
-    );
+    function allDescriptions() {
+        return Array.from(document.querySelectorAll(".portfolio-project-description"));
+    }
 
     function seeMoreButtonFor(description) {
         return document.querySelector(`[aria-controls="${description.id}"]`);
@@ -98,31 +99,36 @@
         }, 500);
     }
 
-    descriptions.forEach(description => {
-        const button = seeMoreButtonFor(description);
-        if (!button) {
-            return;
-        }
+    function bindSeeMore() {
+        allDescriptions().forEach(description => {
+            const button = seeMoreButtonFor(description);
+            if (!button || button.dataset.bound) {
+                return;
+            }
+            button.dataset.bound = "true";
 
-        refreshSeeMore(description);
+            refreshSeeMore(description);
 
-        button.addEventListener("click", () => {
-            setExpanded(
-                description,
-                button,
-                button.getAttribute("aria-expanded") !== "true"
-            );
+            button.addEventListener("click", () => {
+                setExpanded(
+                    description,
+                    button,
+                    button.getAttribute("aria-expanded") !== "true"
+                );
+            });
         });
-    });
+    }
+
+    bindSeeMore();
 
     let resizeTimer = null;
     window.addEventListener("resize", () => {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => descriptions.forEach(refreshSeeMore), 150);
+        resizeTimer = setTimeout(() => allDescriptions().forEach(refreshSeeMore), 150);
     });
 
     // Web fonts can change how many lines a description takes.
-    window.addEventListener("load", () => descriptions.forEach(refreshSeeMore));
+    window.addEventListener("load", () => allDescriptions().forEach(refreshSeeMore));
 
 
     // =========================
@@ -321,17 +327,20 @@
         }
     }
 
-    document.querySelectorAll(".portfolio-project-card").forEach(card => {
-        const projectIndex = Number(card.dataset.projectIndex);
-        const openButton = card.querySelector(".portfolio-project-open");
+    // One listener for all cards, so cards added by a live update work too.
+    document.addEventListener("click", event => {
+        const card = event.target.closest(".portfolio-project-card");
+        // Links and "See more" keep their own behavior.
+        if (!card || event.target.closest("a, .see-more-button")) {
+            return;
+        }
+        openViewer(Number(card.dataset.projectIndex), card.querySelector(".portfolio-project-open"));
+    });
 
-        card.addEventListener("click", event => {
-            // Links and "See more" keep their own behavior.
-            if (event.target.closest("a, .see-more-button")) {
-                return;
-            }
-            openViewer(projectIndex, openButton);
-        });
+    // live-update.js swapped in new project cards and data.
+    document.addEventListener("portfolio:content-updated", () => {
+        projects = JSON.parse(dataElement.textContent);
+        bindSeeMore();
     });
 
     prevButton.addEventListener("click", () => step(-1));

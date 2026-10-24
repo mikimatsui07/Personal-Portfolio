@@ -109,6 +109,9 @@
             inputs.forEach(input => { input.disabled = true; });
             form.dataset.directUploadDone = "true";
             setButton(button, "Saving…");
+            if (window.unsavedGuard) {
+                window.unsavedGuard.allowLeave();
+            }
             form.submit();
         } catch (error) {
             resetButton(button);

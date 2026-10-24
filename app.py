@@ -1159,6 +1159,40 @@ class MessageRepository(Repository):
         )
 
 
+class ContentVersion:
+    """A fingerprint of everything visitors see on the portfolio page.
+
+    It changes whenever the profile, skills, projects, their media or the
+    certificates change, so open pages can tell they are out of date.
+    Messages and admin accounts are not part of it.
+    """
+
+    QUERY = """
+        SELECT md5(concat_ws('|',
+            (SELECT row_to_json(p)::text FROM profile p WHERE id = 1),
+            (SELECT json_agg(x ORDER BY x.id)::text FROM projects x),
+            (SELECT json_agg(x ORDER BY x.id)::text FROM project_media x),
+            (SELECT json_agg(x ORDER BY x.id)::text FROM certificates x)
+        )) AS version
+    """
+
+    def __init__(self, connection_factory):
+        self._connection_factory = connection_factory
+
+    def read(self, cursor):
+        cursor.execute(self.QUERY)
+        return cursor.fetchone()["version"]
+
+    def current(self):
+        connection = self._connection_factory()
+        cursor = connection.cursor()
+        try:
+            return self.read(cursor)
+        finally:
+            cursor.close()
+            connection.close()
+
+
 # =========================================================
 # SERVICES — one object the views receive (encapsulation)
 # =========================================================
@@ -1191,6 +1225,7 @@ class PortfolioServices:
         self.messages = MessageRepository(connection_factory)
         self.certificates = CertificateRepository(connection_factory, storage)
         self.auth = AuthService(AdminRepository(connection_factory))
+        self.content_version = ContentVersion(connection_factory)
 
         self.project_form = ProjectFormValidator()
         self.profile_form = ProfileFormValidator()
@@ -1273,6 +1308,9 @@ class HomeView(PageView):
         connection = services.connect()
         cursor = connection.cursor()
 
+        # Read first: if something changes while the page is being built,
+        # the page holds the older fingerprint and live-update.js refreshes.
+        content_version = services.content_version.read(cursor)
         projects = services.projects.fetch_all(cursor, newest_first=True)
         certificates = services.certificates.fetch_latest(cursor)
 
@@ -1286,6 +1324,7 @@ class HomeView(PageView):
         ]
 
         return self.render(
+            content_version=content_version,
             projects=projects,
             project_data=project_data,
             certificates=[
@@ -1350,6 +1389,15 @@ class LoginView(PageView):
             return redirect("/dashboard")
 
         return self.render(error="Invalid username or password.")
+
+
+class ContentVersionView(BaseView):
+    """Tells open portfolio pages whether the content has changed."""
+
+    def get(self):
+        response = jsonify(version=self._services.content_version.current())
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
 
 class FaviconView(BaseView):
@@ -2017,6 +2065,7 @@ class PortfolioApp:
         ("/upload-url", SignUploadView, "upload_url"),
         ("/logout", LogoutView, "logout"),
         ("/favicon.ico", FaviconView, "favicon"),
+        ("/content-version", ContentVersionView, "content_version"),
     )
 
     def __init__(self, connection_factory=get_db_connection, storage=None):
