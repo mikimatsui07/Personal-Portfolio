@@ -1179,9 +1179,31 @@ class ContentVersion:
     def __init__(self, connection_factory):
         self._connection_factory = connection_factory
 
+    # The dashboard also shows the messages, so its fingerprint adds them.
+    DASHBOARD_QUERY = """
+        SELECT md5(concat_ws('|',
+            ({portfolio}),
+            (SELECT json_agg(m ORDER BY m.id)::text FROM messages m)
+        )) AS version
+    """
+
     def read(self, cursor):
         cursor.execute(self.QUERY)
         return cursor.fetchone()["version"]
+
+    def read_dashboard(self, cursor):
+        portfolio = self.QUERY.replace("AS version", "")
+        cursor.execute(self.DASHBOARD_QUERY.format(portfolio=portfolio))
+        return cursor.fetchone()["version"]
+
+    def current_dashboard(self):
+        connection = self._connection_factory()
+        cursor = connection.cursor()
+        try:
+            return self.read_dashboard(cursor)
+        finally:
+            cursor.close()
+            connection.close()
 
     def current(self):
         connection = self._connection_factory()
@@ -1400,6 +1422,21 @@ class ContentVersionView(BaseView):
         return response
 
 
+class DashboardVersionView(BaseView):
+    """Tells an open dashboard whether messages or content changed.
+
+    Admin only (messages hold visitors' email addresses). Answers with
+    JSON instead of a redirect when logged out, so the page can stop.
+    """
+
+    def get(self):
+        if "admin_id" not in session:
+            return jsonify(error="Not logged in."), 401
+        response = jsonify(version=self._services.content_version.current_dashboard())
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+
 class FaviconView(BaseView):
     """Browsers and link previews ask for /favicon.ico on their own."""
 
@@ -1429,6 +1466,8 @@ class DashboardView(AdminPageView):
         connection = services.connect()
         cursor = connection.cursor()
 
+        # Read first, like the home page: dashboard-live.js compares it.
+        dashboard_version = services.content_version.read_dashboard(cursor)
         projects = services.projects.fetch_all(cursor, newest_first=True)
         message_count = services.messages.count(cursor)
         messages = services.messages.fetch_all(cursor)
@@ -1439,6 +1478,7 @@ class DashboardView(AdminPageView):
         connection.close()
 
         return self.render(
+            dashboard_version=dashboard_version,
             projects=projects,
             project_count=len(projects),
             message_count=message_count,
@@ -2066,6 +2106,7 @@ class PortfolioApp:
         ("/logout", LogoutView, "logout"),
         ("/favicon.ico", FaviconView, "favicon"),
         ("/content-version", ContentVersionView, "content_version"),
+        ("/dashboard-version", DashboardVersionView, "dashboard_version"),
     )
 
     def __init__(self, connection_factory=get_db_connection, storage=None):

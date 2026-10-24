@@ -41,6 +41,10 @@
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='menu.js') }}"></script>
 
+    {# Fingerprint of messages + content; dashboard-live.js compares it with the server's. #}
+    <meta name="dashboard-version" content="{{ dashboard_version }}">
+    <script src="{{ url_for('static', filename='dashboard-live.js') }}" defer></script>
+
 </head>
 
 
@@ -619,7 +623,11 @@
 
                         {% for message in messages %}
 
-                            <article class="message-card">
+                            <article
+                                class="message-card"
+                                data-message-id="{{ message.id }}"
+                                data-sender="{{ message.name }}"
+                            >
 
                                 <!-- MESSAGE HEADER -->
 

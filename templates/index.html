@@ -822,6 +822,18 @@
 
     <script src="{{ url_for('static', filename='project-viewer.js') }}"></script>
 
+    <script>
+        // A message was just sent: a dashboard open in this browser shows
+        // it right away (static/dashboard-live.js listens). Other devices
+        // see it within a few seconds.
+        if (
+            document.querySelector(".contact-feedback-success") &&
+            "BroadcastChannel" in window
+        ) {
+            new BroadcastChannel("portfolio-messages").postMessage("sent");
+        }
+    </script>
+
 </body>
 
 </html>
