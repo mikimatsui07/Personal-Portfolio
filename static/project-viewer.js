@@ -250,6 +250,11 @@
             return tag;
         }));
         tagsElement.hidden = current.technologies.length === 0;
+        // No technologies: hide the "Built with" heading too.
+        const tagsSection = document.getElementById("viewer-tags-section");
+        if (tagsSection) {
+            tagsSection.hidden = tagsElement.hidden;
+        }
 
         linkElement.hidden = !current.link;
         if (current.link) {
