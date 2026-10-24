@@ -450,44 +450,67 @@
 
                 {% for certificate in certificates %}
 
-                    <article class="certificate-card">
+                    <article
+                        class="certificate-card"
+                        data-certificate-index="{{ loop.index0 }}"
+                    >
 
                         <!-- PHOTO (opens the certificate viewer) -->
-                        {% if certificate.photo_url %}
-
-                            <button
-                                type="button"
-                                class="certificate-photo"
-                                data-certificate-photo="{{ certificate.photo_url }}"
-                                data-certificate-title="{{ certificate.title }}"
-                                aria-label="View {{ certificate.title }} certificate"
-                            >
+                        <button
+                            type="button"
+                            class="certificate-photo certificate-open"
+                            aria-label="View {{ certificate.title }} certificate"
+                        >
+                            {% if certificate.photo_url %}
                                 <img src="{{ certificate.photo_url }}" alt="" loading="lazy">
-                                <span class="portfolio-project-open-hint" aria-hidden="true">View certificate</span>
-                            </button>
-
-                        {% else %}
-
-                            <div class="certificate-photo">
+                            {% else %}
                                 <span class="portfolio-no-image"><span>CERTIFICATE</span></span>
-                            </div>
-
-                        {% endif %}
+                            {% endif %}
+                            <span class="portfolio-project-open-hint" aria-hidden="true">View certificate</span>
+                        </button>
 
 
                         <!-- CERTIFICATE INFORMATION -->
                         <div class="certificate-content">
 
-                            <p class="portfolio-project-date">
+                            <p class="portfolio-project-date certificate-dates">
                                 <time datetime="{{ certificate.obtained_iso }}">{{ certificate.obtained_label }}</time>
+                                {% if certificate.is_expired %}
+                                    <span class="certificate-status is-expired">Expired</span>
+                                {% endif %}
                             </p>
 
                             <h3>
                                 {{ certificate.title }}
                             </h3>
 
+                            {% if certificate.issuer %}
+                                <p class="certificate-issuer">Issued by {{ certificate.issuer }}</p>
+                            {% endif %}
+
                             {% if certificate.description %}
-                                <p class="certificate-description">{{ certificate.description }}</p>
+                                <p
+                                    class="portfolio-project-description certificate-description"
+                                    id="certificate-description-{{ certificate.id }}"
+                                >{{ certificate.description }}</p>
+
+                                <button
+                                    type="button"
+                                    class="see-more-button"
+                                    aria-expanded="false"
+                                    aria-controls="certificate-description-{{ certificate.id }}"
+                                    hidden
+                                >
+                                    See more
+                                </button>
+                            {% endif %}
+
+                            {% if certificate.skill_list %}
+                                <div class="portfolio-project-tags">
+                                    {% for skill in certificate.skill_list %}
+                                        <span>{{ skill }}</span>
+                                    {% endfor %}
+                                </div>
                             {% endif %}
 
                         </div>
@@ -497,6 +520,8 @@
                 {% endfor %}
 
             </div>
+
+            <script type="application/json" id="certificate-data">{{ certificate_data | tojson }}</script>
 
         {% else %}
 
@@ -513,21 +538,58 @@
     </section>
 
 
-    <!-- CERTIFICATE VIEWER -->
+    <!-- CERTIFICATE VIEWER (filled in by certificate-viewer.js; same layout as the project viewer) -->
     <dialog
-        class="certificate-viewer"
+        class="project-viewer certificate-dialog"
         id="certificate-viewer"
-        aria-labelledby="certificate-viewer-title"
+        aria-labelledby="cert-viewer-title"
     >
 
-        <img id="certificate-viewer-image" alt="">
+        <div class="viewer-layout">
 
-        <p class="certificate-viewer-title" id="certificate-viewer-title"></p>
+            <div class="viewer-media">
+                <div class="viewer-stage" id="cert-viewer-stage"></div>
+            </div>
+
+            <div class="viewer-info">
+
+                <p class="portfolio-project-date certificate-dates" id="cert-viewer-dates"></p>
+
+                <h3 id="cert-viewer-title"></h3>
+
+                <p class="certificate-issuer" id="cert-viewer-issuer"></p>
+
+                <section class="viewer-section" id="cert-viewer-about" aria-labelledby="cert-viewer-about-label">
+                    <h4 class="viewer-section-label" id="cert-viewer-about-label">About this certificate</h4>
+                    <p class="viewer-description" id="cert-viewer-description"></p>
+                </section>
+
+                <section class="viewer-section" id="cert-viewer-skills-section" aria-labelledby="cert-viewer-skills-label">
+                    <h4 class="viewer-section-label" id="cert-viewer-skills-label">Skills</h4>
+                    <div class="portfolio-project-tags" id="cert-viewer-skills"></div>
+                </section>
+
+                <section class="viewer-section" id="cert-viewer-credential" aria-labelledby="cert-viewer-credential-label">
+                    <h4 class="viewer-section-label" id="cert-viewer-credential-label">Credential</h4>
+                    <p class="certificate-credential-id" id="cert-viewer-credential-id"></p>
+                    <a
+                        id="cert-viewer-link"
+                        class="portfolio-project-link"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        Verify credential →
+                    </a>
+                </section>
+
+            </div>
+
+        </div>
 
         <button
             type="button"
             class="viewer-close"
-            id="certificate-viewer-close"
+            id="cert-viewer-close"
             aria-label="Close certificate"
         >×</button>
 
@@ -786,47 +848,9 @@
         });
     </script>
 
-    <script>
-        // Certificate viewer: shows the full photo in a dialog.
-        (() => {
-            const viewer = document.getElementById("certificate-viewer");
-            const image = document.getElementById("certificate-viewer-image");
-            const title = document.getElementById("certificate-viewer-title");
-            const closeButton = document.getElementById("certificate-viewer-close");
-            let opener = null;
-
-            // One listener for the page, so certificates added by a live
-            // update open too.
-            document.addEventListener("click", event => {
-                const button = event.target.closest("[data-certificate-photo]");
-                if (!button) {
-                    return;
-                }
-                opener = button;
-                image.src = button.dataset.certificatePhoto;
-                image.alt = `${button.dataset.certificateTitle} certificate`;
-                title.textContent = button.dataset.certificateTitle;
-                viewer.showModal();
-            });
-
-            closeButton.addEventListener("click", () => viewer.close());
-
-            // A click on the dark backdrop (outside the dialog box) closes it.
-            viewer.addEventListener("click", event => {
-                if (event.target === viewer) {
-                    viewer.close();
-                }
-            });
-
-            viewer.addEventListener("close", () => {
-                if (opener) {
-                    opener.focus();
-                }
-            });
-        })();
-    </script>
 
     <script src="{{ url_for('static', filename='project-viewer.js') }}"></script>
+    <script src="{{ url_for('static', filename='certificate-viewer.js') }}"></script>
 
     <script>
         // A message was just sent: a dashboard open in this browser shows

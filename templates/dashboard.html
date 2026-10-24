@@ -514,14 +514,25 @@
 
                                 <div class="project-card-content">
 
-                                    <span class="project-date">
-                                        Obtained
-                                        <time datetime="{{ certificate.obtained_iso }}">{{ certificate.obtained_label }}</time>
+                                    <span class="project-date certificate-dates">
+                                        <span>
+                                            Obtained
+                                            <time datetime="{{ certificate.obtained_iso }}">{{ certificate.obtained_label }}</time>
+                                        </span>
+                                        {% if certificate.expires_label %}
+                                            <span class="certificate-status{% if certificate.is_expired %} is-expired{% endif %}">
+                                                {{ 'Expired' if certificate.is_expired else 'Valid until' }} {{ certificate.expires_label }}
+                                            </span>
+                                        {% endif %}
                                     </span>
 
                                     <h3>
                                         {{ certificate.title }}
                                     </h3>
+
+                                    {% if certificate.issuer %}
+                                        <p class="certificate-issuer">Issued by {{ certificate.issuer }}</p>
+                                    {% endif %}
 
                                     {% if certificate.description %}
                                         <p>

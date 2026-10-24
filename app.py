@@ -706,11 +706,21 @@ class ProfileFormValidator(FormValidator):
 class CertificateFormValidator(FormValidator):
     TITLE_MAX_LENGTH = 160
     DESCRIPTION_MAX_LENGTH = 2000
+    ISSUER_MAX_LENGTH = 160
+    CREDENTIAL_ID_MAX_LENGTH = 120
+    URL_MAX_LENGTH = 2048
+    MAX_SKILLS = 20
+    SKILL_MAX_LENGTH = 40
 
     def validate(self, form):
         title = (form.get("title") or "").strip()
         description = (form.get("description") or "").strip()
         obtained_at = (form.get("obtained_at") or "").strip()
+        issuer = " ".join((form.get("issuer") or "").split())
+        credential_id = (form.get("credential_id") or "").strip()
+        credential_url = (form.get("credential_url") or "").strip()
+        skills = SkillParser.parse(form.get("skills"))
+        expires_at = (form.get("expires_at") or "").strip()
 
         if not title or not obtained_at:
             return None, "Title and date obtained are required."
@@ -721,15 +731,48 @@ class CertificateFormValidator(FormValidator):
         if len(description) > self.DESCRIPTION_MAX_LENGTH:
             return None, "Description must be 2,000 characters or fewer."
 
+        if len(issuer) > self.ISSUER_MAX_LENGTH:
+            return None, f"Issued by must be {self.ISSUER_MAX_LENGTH} characters or fewer."
+
+        if len(credential_id) > self.CREDENTIAL_ID_MAX_LENGTH:
+            return None, f"Credential ID must be {self.CREDENTIAL_ID_MAX_LENGTH} characters or fewer."
+
+        if len(credential_url) > self.URL_MAX_LENGTH:
+            return None, "The verification link must be 2,048 characters or fewer."
+
+        if credential_url:
+            parsed_link = urlparse(credential_url)
+            if parsed_link.scheme not in {"http", "https"} or not parsed_link.netloc:
+                return None, "Enter a valid verification link starting with http:// or https://."
+
+        if len(skills) > self.MAX_SKILLS:
+            return None, f"You can list up to {self.MAX_SKILLS} skills."
+
+        if any(len(skill) > self.SKILL_MAX_LENGTH for skill in skills):
+            return None, f"Each skill must be {self.SKILL_MAX_LENGTH} characters or fewer."
+
         try:
-            date.fromisoformat(obtained_at)
+            obtained = date.fromisoformat(obtained_at)
         except ValueError:
             return None, "Enter a valid date obtained."
+
+        if expires_at:
+            try:
+                expires = date.fromisoformat(expires_at)
+            except ValueError:
+                return None, "Enter a valid expiration date, or leave it empty."
+            if expires < obtained:
+                return None, "The expiration date can't be before the date obtained."
 
         return {
             "title": title,
             "description": description,
-            "obtained_at": obtained_at
+            "obtained_at": obtained_at,
+            "issuer": issuer,
+            "credential_id": credential_id,
+            "credential_url": credential_url,
+            "skills": ", ".join(skills),
+            "expires_at": expires_at or None
         }, None
 
 
@@ -1101,37 +1144,39 @@ class CertificateRepository(Repository):
     def find(self, cursor, certificate_id):
         return self.find_by_id(cursor, certificate_id)
 
+    # Columns written by create/update, besides the photo.
+    FIELDS = ("title", "description", "obtained_at", "issuer",
+              "credential_id", "credential_url", "skills", "expires_at")
+
     def create(self, cursor, values, photo):
+        columns = self.FIELDS + ("photo",)
         cursor.execute(
-            """
-            INSERT INTO certificates (title, description, photo, obtained_at)
-            VALUES (%s, %s, %s, %s)
+            f"""
+            INSERT INTO certificates ({", ".join(columns)})
+            VALUES ({", ".join(["%s"] * len(columns))})
             """,
-            (values["title"], values["description"], photo, values["obtained_at"])
+            [values[field] for field in self.FIELDS] + [photo]
         )
 
     def update(self, cursor, certificate_id, values, photo):
+        assignments = ", ".join(f"{field} = %s" for field in self.FIELDS + ("photo",))
         cursor.execute(
-            """
+            f"""
             UPDATE certificates
-            SET title = %s,
-                description = %s,
-                photo = %s,
-                obtained_at = %s
+            SET {assignments}
             WHERE id = %s
             """,
-            (
-                values["title"],
-                values["description"],
-                photo,
-                values["obtained_at"],
-                certificate_id
-            )
+            [values[field] for field in self.FIELDS] + [photo, certificate_id]
         )
 
+    @staticmethod
+    def _label(day):
+        return f"{day:%B} {day.day}, {day.year}"
+
     def for_display(self, certificate):
-        """Add the photo URL and readable dates the templates use."""
+        """Add the photo URL, readable dates and lists the templates use."""
         obtained = certificate["obtained_at"]
+        expires = certificate.get("expires_at")
         return dict(
             certificate,
             photo_url=(
@@ -1139,8 +1184,29 @@ class CertificateRepository(Repository):
                 if certificate["photo"] else None
             ),
             obtained_iso=obtained.isoformat(),
-            obtained_label=f"{obtained:%B} {obtained.day}, {obtained.year}"
+            obtained_label=self._label(obtained),
+            expires_iso=expires.isoformat() if expires else "",
+            expires_label=self._label(expires) if expires else "",
+            is_expired=bool(expires and expires < date.today()),
+            skill_list=SkillParser.parse(certificate.get("skills"))
         )
+
+    @staticmethod
+    def to_viewer_data(certificate):
+        """What the certificate viewer needs, ready for JSON (from for_display)."""
+        return {
+            "id": certificate["id"],
+            "title": certificate["title"],
+            "description": certificate["description"],
+            "issuer": certificate.get("issuer") or "",
+            "photo": certificate["photo_url"],
+            "obtained": certificate["obtained_label"],
+            "expires": certificate["expires_label"],
+            "expired": certificate["is_expired"],
+            "skills": certificate["skill_list"],
+            "credentialId": certificate.get("credential_id") or "",
+            "credentialUrl": certificate.get("credential_url") or ""
+        }
 
 
 class MessageRepository(Repository):
@@ -1345,13 +1411,20 @@ class HomeView(PageView):
             ProjectRepository.to_viewer_data(project) for project in projects
         ]
 
+        shown_certificates = [
+            services.certificates.for_display(certificate)
+            for certificate in certificates
+        ]
+
         return self.render(
             content_version=content_version,
             projects=projects,
             project_data=project_data,
-            certificates=[
-                services.certificates.for_display(certificate)
-                for certificate in certificates
+            certificates=shown_certificates,
+            # Everything the certificate viewer needs, sent as JSON.
+            certificate_data=[
+                CertificateRepository.to_viewer_data(certificate)
+                for certificate in shown_certificates
             ],
             profile=services.profile.load()
         )

@@ -98,6 +98,28 @@
         </div>
 
 
+        <!-- ISSUED BY -->
+
+        <div class="form-group">
+
+            <label for="issuer">
+                Issued By
+            </label>
+
+            <p class="form-help">Optional. The school, company or organization that gave it.</p>
+
+            <input
+                type="text"
+                id="issuer"
+                name="issuer"
+                maxlength="160"
+                placeholder="Example: Cisco Networking Academy"
+                value="{{ form.get('issuer', (certificate.issuer or '') if certificate else '') }}"
+            >
+
+        </div>
+
+
         <!-- DESCRIPTION -->
 
         <div class="form-group">
@@ -106,7 +128,7 @@
                 Description
             </label>
 
-            <p class="form-help">Optional. Who issued it, or what you learned.</p>
+            <p class="form-help">Optional. What the course covered or what you learned. Leave a blank line between paragraphs.</p>
 
             <textarea
                 id="description"
@@ -115,6 +137,42 @@
                 maxlength="2000"
                 placeholder="Write a short description about this certificate..."
             >{{ form.get('description', certificate.description if certificate else '') }}</textarea>
+
+        </div>
+
+
+        <!-- SKILLS COVERED -->
+
+        <div class="form-group">
+
+            <label for="certificate-skill-input">
+                Skills Covered
+            </label>
+
+            <p class="form-help">
+                Optional. Type a skill and press Enter or Add. Separate several with commas. Click a skill to remove it.
+            </p>
+
+            <div class="other-technology">
+                <input
+                    type="text"
+                    id="certificate-skill-input"
+                    placeholder="Example: Network Security"
+                    maxlength="200"
+                >
+                <button type="button" id="certificate-skill-add" class="skill-add-button">
+                    Add
+                </button>
+            </div>
+
+            <div class="technology-buttons skill-list" id="certificate-skill-list" aria-live="polite"></div>
+
+            <input
+                type="hidden"
+                name="skills"
+                id="certificate-skills-field"
+                value="{{ form.get('skills', (certificate.skills or '') if certificate else '') }}"
+            >
 
         </div>
 
@@ -133,6 +191,79 @@
                 name="obtained_at"
                 value="{{ form.get('obtained_at', certificate.obtained_iso if certificate else '') }}"
                 required
+            >
+
+        </div>
+
+
+        <!-- EXPIRATION DATE -->
+
+        <div class="form-group">
+
+            <label for="expires_at">
+                Expiration Date
+            </label>
+
+            <p class="form-help">Optional. Leave empty if it doesn't expire.</p>
+
+            <input
+                type="date"
+                id="expires_at"
+                name="expires_at"
+                value="{{ form.get('expires_at', certificate.expires_iso if certificate else '') }}"
+            >
+
+        </div>
+
+
+        <!-- =========================
+             CREDENTIAL
+        ========================== -->
+
+        <div class="profile-form-heading">
+            <p class="dashboard-label">CREDENTIAL</p>
+            <h2>Proof it's real</h2>
+            <p>Optional. Lets visitors check the certificate with the issuer.</p>
+        </div>
+
+
+        <!-- CREDENTIAL ID -->
+
+        <div class="form-group">
+
+            <label for="credential_id">
+                Credential ID
+            </label>
+
+            <input
+                type="text"
+                id="credential_id"
+                name="credential_id"
+                maxlength="120"
+                placeholder="Example: 1a2b3c4d-5678"
+                value="{{ form.get('credential_id', (certificate.credential_id or '') if certificate else '') }}"
+            >
+
+        </div>
+
+
+        <!-- VERIFICATION LINK -->
+
+        <div class="form-group">
+
+            <label for="credential_url">
+                Verification Link
+            </label>
+
+            <p class="form-help">Shown on your portfolio as a "Verify credential" button.</p>
+
+            <input
+                type="url"
+                id="credential_url"
+                name="credential_url"
+                maxlength="2048"
+                placeholder="https://www.credly.com/badges/..."
+                value="{{ form.get('credential_url', (certificate.credential_url or '') if certificate else '') }}"
             >
 
         </div>
@@ -163,6 +294,64 @@
 </div>
 
 <script>
+    // Skills covered: chips like the Skills field on Edit Profile.
+    (() => {
+        const MAX_LENGTH = 40;
+        const input = document.getElementById("certificate-skill-input");
+        const addButton = document.getElementById("certificate-skill-add");
+        const list = document.getElementById("certificate-skill-list");
+        const field = document.getElementById("certificate-skills-field");
+        const skills = [];
+
+        function save() {
+            field.value = skills.join(", ");
+        }
+
+        function render(skill) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "technology-button selected custom-technology";
+            button.setAttribute("aria-label", `Remove ${skill}`);
+            button.textContent = `${skill} ×`;
+            button.addEventListener("click", () => {
+                skills.splice(skills.indexOf(skill), 1);
+                button.remove();
+                save();
+            });
+            list.appendChild(button);
+        }
+
+        function add(raw) {
+            raw.split(",")
+                .map(skill => skill.trim().replace(/\s+/g, " "))
+                .filter(Boolean)
+                .forEach(skill => {
+                    const known = skills.some(item => item.toLowerCase() === skill.toLowerCase());
+                    if (!known && skill.length <= MAX_LENGTH) {
+                        skills.push(skill);
+                        render(skill);
+                    }
+                });
+            save();
+        }
+
+        add(field.value);
+
+        addButton.addEventListener("click", () => {
+            add(input.value);
+            input.value = "";
+            input.focus();
+        });
+
+        input.addEventListener("keydown", event => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                add(input.value);
+                input.value = "";
+            }
+        });
+    })();
+
     // Show the chosen photo before saving.
     (() => {
         const input = document.getElementById("photo");

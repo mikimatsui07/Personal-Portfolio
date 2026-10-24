@@ -6941,44 +6941,6 @@ div.certificate-photo {
 }
 
 
-/* ---------- Certificate viewer (full photo) ---------- */
-
-.certificate-viewer {
-    width: min(960px, calc(100vw - 32px));
-    max-width: none;
-    max-height: calc(100dvh - 32px);
-    margin: auto;
-    padding: 14px 14px 18px;
-    overflow: hidden;
-    border: 0;
-    border-radius: 18px;
-    background: #fff;
-    box-shadow: 0 30px 80px rgba(30, 18, 44, 0.35);
-    color: var(--color-ink);
-}
-
-.certificate-viewer::backdrop {
-    background: rgba(28, 18, 40, 0.62);
-}
-
-.certificate-viewer img {
-    display: block;
-    width: 100%;
-    max-height: calc(100dvh - 120px);
-    border-radius: 10px;
-    background: #1d1626;
-    object-fit: contain;
-}
-
-.certificate-viewer-title {
-    margin-top: 12px;
-    padding-right: 8px;
-    font-size: 16px;
-    font-weight: 650;
-    letter-spacing: -0.01em;
-}
-
-
 /* ---------- Admin: landscape photo preview ---------- */
 
 /* Fixed size: "flex-basis" would become the height when the row
@@ -7039,14 +7001,6 @@ div.certificate-photo {
     background: linear-gradient(135deg, #261f30, #2f2639);
 }
 
-[data-theme="dark"] .certificate-viewer {
-    background: var(--surface);
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
-}
-
-[data-theme="dark"] .certificate-viewer::backdrop {
-    background: rgba(8, 5, 12, 0.75);
-}
 
 
 
@@ -8532,4 +8486,103 @@ button.is-busy {
         margin-top: 6px;
         padding-top: 12px;
     }
+}
+
+
+
+/* =========================================================
+   CERTIFICATES — ISSUER, STATUS, CREDENTIAL, SEE MORE
+   Cards open the certificate viewer (certificate-viewer.js),
+   which reuses the project viewer's layout.
+========================================================= */
+
+.certificate-card {
+    cursor: pointer;
+}
+
+.certificate-content .portfolio-project-tags {
+    margin-top: 12px;
+}
+
+.certificate-content .see-more-button {
+    margin-top: 4px;
+}
+
+.certificate-dates {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+}
+
+.certificate-status {
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: #e9f7ee;
+    color: #23743f;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.certificate-status.is-expired {
+    background: #fff0f0;
+    color: #a6424c;
+}
+
+.certificate-issuer {
+    margin: -2px 0 8px;
+    color: var(--color-primary-dark);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.viewer-info .certificate-issuer {
+    margin: -4px 0 0;
+    font-size: 15px;
+}
+
+.certificate-issuer[hidden],
+.certificate-credential-id[hidden] {
+    display: none;
+}
+
+.certificate-credential-id {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    color: var(--color-muted);
+    font-size: 14px;
+}
+
+.certificate-credential-id code {
+    padding: 3px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-primary-soft);
+    color: var(--color-ink);
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+}
+
+[data-theme="dark"] .certificate-status {
+    background: #15271b;
+    color: #9fdcb0;
+}
+
+[data-theme="dark"] .certificate-status.is-expired {
+    background: #3a1d22;
+    color: #f2a9b0;
+}
+
+[data-theme="dark"] .certificate-issuer {
+    color: #d6bff5;
+}
+
+[data-theme="dark"] .certificate-credential-id code {
+    border-color: #43365a;
+    background: #2c2338;
+    color: var(--color-ink);
 }
