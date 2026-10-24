@@ -35,6 +35,7 @@
     <script src="{{ url_for('static', filename='theme.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='menu.js') }}"></script>
+    <script src="{{ url_for('static', filename='media-picker.js') }}" defer></script>
     <script src="{{ url_for('static', filename='unsaved-guard.js') }}" defer></script>
     {% if direct_uploads %}<script src="{{ url_for('static', filename='direct-upload.js') }}" defer></script>{% endif %}
 
@@ -290,6 +291,10 @@
                                 accept=".png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.mov,.pdf"
                                 aria-describedby="media-help selected-media-name"
                                 multiple
+                                data-media-picker="#selected-files"
+                                data-count="#selected-media-name"
+                                data-max-files="10"
+                                data-existing="{{ project.gallery | length }}"
                             >
                             <label class="media-upload-button" for="media">
                                 <span aria-hidden="true">↑</span>
@@ -297,8 +302,8 @@
                             </label>
                             <span id="selected-media-name" class="current-media-name">No new files selected</span>
                         </div>
-                        <div class="selected-files" id="selected-files"></div>
-                        <small id="media-help">Hold Ctrl or Shift to pick several. PNG, JPG, GIF, WebP, MP4, WebM, MOV, or PDF. Maximum 16 MB each.</small>
+                        <div class="media-tiles" id="selected-files" aria-live="polite"></div>
+                        <small id="media-help">Add files in one go or a few at a time; use × to remove one. PNG, JPG, GIF, WebP, MP4, WebM, MOV, or PDF. Maximum 16 MB each.</small>
                     </section>
 
 
@@ -415,21 +420,7 @@
 
         updateTechnologies();
 
-        const mediaInput = document.getElementById("media");
-        const selectedMediaName = document.getElementById("selected-media-name");
-        const selectedFiles = document.getElementById("selected-files");
-
-        mediaInput.addEventListener("change", () => {
-            const files = Array.from(mediaInput.files);
-            selectedMediaName.textContent = files.length === 0
-                ? "No new files selected"
-                : `${files.length} new file${files.length === 1 ? "" : "s"} to add`;
-            selectedFiles.replaceChildren(...files.map(file => {
-                const chip = document.createElement("span");
-                chip.textContent = file.name;
-                return chip;
-            }));
-        });
+        // New media: removable preview tiles (static/media-picker.js).
     </script>
 
 </body>

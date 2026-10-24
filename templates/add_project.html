@@ -37,6 +37,7 @@
     <script src="{{ url_for('static', filename='theme.js') }}"></script>
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='menu.js') }}"></script>
+    <script src="{{ url_for('static', filename='media-picker.js') }}" defer></script>
     <script src="{{ url_for('static', filename='unsaved-guard.js') }}" defer></script>
     {% if direct_uploads %}<script src="{{ url_for('static', filename='direct-upload.js') }}" defer></script>{% endif %}
 
@@ -592,6 +593,9 @@
                             name="media"
                             accept=".png,.jpg,.jpeg,.gif,.webp,.mp4,.webm,.mov,.pdf"
                             multiple
+                            data-media-picker="#selected-files"
+                            data-count="#file-name"
+                            data-max-files="10"
                         >
 
 
@@ -602,11 +606,11 @@
 
                     </div>
 
-                    <div class="selected-files" id="selected-files"></div>
+                    <div class="media-tiles" id="selected-files" aria-live="polite"></div>
 
 
                     <p class="file-help">
-                        Select up to 10 files at once (hold Ctrl or Shift to pick several). The first file is the cover shown on your portfolio.
+                        Add up to 10 files, in one go or a few at a time. Use × to remove a file you added by mistake. The first file is the cover shown on your portfolio.
                         PNG, JPG, GIF, WebP, MP4, WebM, MOV, or PDF. Maximum 16 MB each.
                     </p>
 
@@ -928,47 +932,7 @@
 
 
 
-        // =========================
-        // CUSTOM FILE UPLOAD
-        // =========================
-
-        const mediaInput =
-            document.getElementById("media");
-
-
-        const fileName =
-            document.getElementById("file-name");
-
-
-        const selectedFiles =
-            document.getElementById("selected-files");
-
-
-        mediaInput.addEventListener(
-            "change",
-            function () {
-
-                const files = Array.from(this.files);
-
-                fileName.textContent = files.length === 0
-                    ? "No files selected"
-                    : files.length === 1
-                        ? "1 file selected"
-                        : `${files.length} files selected`;
-
-                selectedFiles.replaceChildren(
-                    ...files.map((file, index) => {
-                        const chip = document.createElement("span");
-                        chip.textContent = index === 0
-                            ? `${file.name} (cover)`
-                            : file.name;
-                        return chip;
-                    })
-                );
-
-            }
-        );
-
+        // Chosen media: removable preview tiles (static/media-picker.js).
 
     </script>
 
