@@ -8842,3 +8842,40 @@ button.is-busy {
     display: inline-flex;
     margin: 0;
 }
+
+
+/* =========================================================
+   ABOUT — FULL NAME
+   The admin's full name at the top of the About text.
+========================================================= */
+
+.about-text .about-name {
+    margin-bottom: 14px;
+    color: var(--color-ink);
+    font-size: clamp(24px, 3vw, 32px);
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+/* A short accent line under the name, like the section labels. */
+.about-text .about-name::after {
+    display: block;
+    width: 44px;
+    height: 3px;
+    margin-top: 12px;
+    border-radius: 3px;
+    background: var(--color-primary);
+    content: "";
+}
+
+[data-theme="dark"] .about-text .about-name::after {
+    background: var(--color-accent);
+}
+
+@media (max-width: 300px) {
+    .about-text .about-name {
+        font-size: 21px;
+    }
+}

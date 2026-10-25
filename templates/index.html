@@ -157,13 +157,13 @@
                     <img
                         class="about-photo"
                         src="{{ media_url(profile.picture) }}"
-                        alt="Miki G. Matsui"
+                        alt="{{ profile.full_name }}"
                     >
 
                 {% else %}
 
                     <div class="about-placeholder">
-                        <span>Miki G. Matsui</span>
+                        <span>{{ profile.full_name }}</span>
                     </div>
 
                 {% endif %}
@@ -172,6 +172,8 @@
 
 
             <div class="about-text">
+
+                <h3 class="about-name">{{ profile.full_name }}</h3>
 
                 {% for paragraph in profile.paragraphs %}
                     <p>{{ paragraph }}</p>

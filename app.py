@@ -707,22 +707,30 @@ class ProfileFormValidator(FormValidator):
     MAX_SKILLS = 30
     HERO_NAME_MAX_LENGTH = 40
     HERO_INTRO_MAX_LENGTH = 600
+    FULL_NAME_MAX_LENGTH = 80
 
     def validate(self, form):
         values = {
             "hero_name": " ".join((form.get("hero_name") or "").split()),
+            "full_name": " ".join((form.get("full_name") or "").split()),
             "hero_intro": (form.get("hero_intro") or "").strip(),
             "description": (form.get("description") or "").strip(),
             "skills": SkillParser.parse(form.get("skills"))
         }
         return values, self._first_error(**values)
 
-    def _first_error(self, hero_name, hero_intro, description, skills):
+    def _first_error(self, hero_name, full_name, hero_intro, description, skills):
         if not hero_name or not hero_intro:
             return "Please fill in the hero name and introduction."
 
         if len(hero_name) > self.HERO_NAME_MAX_LENGTH:
             return f"The hero name must be {self.HERO_NAME_MAX_LENGTH} characters or fewer."
+
+        if not full_name:
+            return "Please fill in your full name."
+
+        if len(full_name) > self.FULL_NAME_MAX_LENGTH:
+            return f"Your full name must be {self.FULL_NAME_MAX_LENGTH} characters or fewer."
 
         if len(hero_intro) > self.HERO_INTRO_MAX_LENGTH:
             return f"The hero introduction must be {self.HERO_INTRO_MAX_LENGTH} characters or fewer."
@@ -1085,6 +1093,7 @@ class ProfileRepository(Repository):
     # so the hero and About section look the same until they are edited.
     DEFAULTS = {
         "hero_name": "Miki",
+        "full_name": "Miki G. Matsui",
         "hero_intro": (
             "A student, creative artist, and aspiring developer who enjoys "
             "creating digital art, websites, and other creative projects."
@@ -1111,7 +1120,7 @@ class ProfileRepository(Repository):
         try:
             cursor.execute(
                 """
-                SELECT hero_name, hero_intro, hero_picture,
+                SELECT hero_name, full_name, hero_intro, hero_picture,
                        description, picture, skills
                 FROM profile
                 WHERE id = 1
@@ -1125,6 +1134,7 @@ class ProfileRepository(Repository):
         description = row["description"] or ""
         return {
             "hero_name": row["hero_name"] or self.DEFAULTS["hero_name"],
+            "full_name": row["full_name"] or self.DEFAULTS["full_name"],
             "hero_intro": row["hero_intro"] or self.DEFAULTS["hero_intro"],
             "hero_picture": row["hero_picture"],
             "description": description,
@@ -1143,6 +1153,7 @@ class ProfileRepository(Repository):
             """
             UPDATE profile
             SET hero_name = %s,
+                full_name = %s,
                 hero_intro = %s,
                 hero_picture = %s,
                 description = %s,
@@ -1153,6 +1164,7 @@ class ProfileRepository(Repository):
             """,
             (
                 values["hero_name"],
+                values["full_name"],
                 values["hero_intro"],
                 pictures["hero_picture"],
                 values["description"],

@@ -202,6 +202,29 @@
                     </div>
 
 
+                    <!-- FULL NAME -->
+
+                    <div class="form-group">
+
+                        <label for="full_name">
+                            Full Name
+                        </label>
+
+                        <p class="form-help">Shown at the top of your About section.</p>
+
+                        <input
+                            type="text"
+                            id="full_name"
+                            name="full_name"
+                            maxlength="80"
+                            autocomplete="name"
+                            value="{{ form.get('full_name', profile.full_name) }}"
+                            required
+                        >
+
+                    </div>
+
+
                     <!-- PROFILE PICTURE -->
 
                     <section class="form-group media-editor" aria-labelledby="picture-heading">
