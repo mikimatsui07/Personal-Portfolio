@@ -611,6 +611,9 @@ class ProjectCategories:
     Each project has exactly one. The key is stored in the database;
     the label is what visitors and the admin see. To add a category,
     add a line here (existing projects keep theirs).
+
+    A project in "other" may carry its own name (category_custom, e.g.
+    "Photography"); it then shows and filters as that name.
     """
 
     CHOICES = (
@@ -621,6 +624,7 @@ class ProjectCategories:
         ("other", "Other"),
     )
     LABELS = dict(CHOICES)
+    CUSTOM_MAX_LENGTH = 40
 
     @classmethod
     def is_valid(cls, key):
@@ -630,13 +634,47 @@ class ProjectCategories:
     def label(cls, key):
         return cls.LABELS.get(key, cls.LABELS["other"])
 
+    @staticmethod
+    def _custom(project):
+        if project.get("category") != "other":
+            return ""
+        return " ".join((project.get("category_custom") or "").split())
+
+    @classmethod
+    def display_label(cls, project):
+        """What visitors see: the custom name for a named "Other"."""
+        return cls._custom(project) or cls.label(project.get("category"))
+
+    @classmethod
+    def filter_key(cls, project):
+        """Groups projects for the filter buttons (custom names ignore case)."""
+        custom = cls._custom(project)
+        if custom:
+            return "other:" + re.sub(r"[^a-z0-9]+", "-", custom.lower()).strip("-")
+        return project.get("category") if cls.is_valid(project.get("category")) else "other"
+
     @classmethod
     def in_use(cls, projects):
-        """[(key, label, count)] for categories that have projects."""
-        counts = {}
+        """[(key, label, count)] for categories that have projects.
+
+        Standard categories first (in CHOICES order), then custom names
+        alphabetically, then the plain "Other".
+        """
+        groups = {}
         for project in projects:
-            counts[project["category"]] = counts.get(project["category"], 0) + 1
-        return [(key, label, counts[key]) for key, label in cls.CHOICES if key in counts]
+            key = cls.filter_key(project)
+            if key not in groups:
+                groups[key] = [cls.display_label(project), 0]
+            groups[key][1] += 1
+
+        standard = [(key, groups[key][0], groups[key][1])
+                    for key, _ in cls.CHOICES if key in groups and key != "other"]
+        custom = sorted(
+            ((key, label, count) for key, (label, count) in groups.items() if key.startswith("other:")),
+            key=lambda group: group[1].lower()
+        )
+        plain_other = [("other", groups["other"][0], groups["other"][1])] if "other" in groups else []
+        return standard + custom + plain_other
 
 
 class ProjectFormValidator(FormValidator):
@@ -648,12 +686,19 @@ class ProjectFormValidator(FormValidator):
         created_at = (form.get("created_at") or "").strip()
         project_link = (form.get("project_link") or "").strip()
         category = (form.get("category") or "").strip()
+        category_custom = " ".join((form.get("category_custom") or "").split())
 
         if not title or not description or not created_at:
             return None, "Title, description, and project date are required."
 
         if not ProjectCategories.is_valid(category):
             return None, "Choose a category for the project."
+
+        # Only an "Other" project keeps its own category name.
+        if category != "other":
+            category_custom = ""
+        if len(category_custom) > ProjectCategories.CUSTOM_MAX_LENGTH:
+            return None, f"The category name must be {ProjectCategories.CUSTOM_MAX_LENGTH} characters or fewer."
 
         if len(title) > 160 or len(description) > 5000:
             return None, "Title must be 160 characters or fewer and description 5,000 characters or fewer."
@@ -680,7 +725,8 @@ class ProjectFormValidator(FormValidator):
             "technologies": technologies,
             "created_at": created_at,
             "project_link": project_link,
-            "category": category
+            "category": category,
+            "category_custom": category_custom
         }, None
 
 
@@ -937,13 +983,40 @@ class ProjectRepository(Repository):
     def table_name(self):
         return "projects"
 
+    @staticmethod
+    def _consistent_custom_name(cursor, name, exclude_id=None):
+        """Reuse the spelling already saved for this "Other" name (any case).
+
+        Typing "photography" after "Photography" exists saves "Photography",
+        so tags, filter buttons and suggestions always agree.
+        """
+        if not name:
+            return name
+        cursor.execute(
+            """
+            SELECT category_custom
+            FROM projects
+            WHERE category = 'other'
+              AND lower(category_custom) = lower(%s)
+              AND id <> %s
+            ORDER BY id
+            LIMIT 1
+            """,
+            (name, exclude_id or 0)
+        )
+        row = cursor.fetchone()
+        return row["category_custom"] if row else name
+
     def create(self, cursor, values):
         """Insert a project; returns its new id."""
+        values = dict(values, category_custom=self._consistent_custom_name(
+            cursor, values["category_custom"]
+        ))
         cursor.execute(
             """
             INSERT INTO projects
-            (title, description, technologies, project_link, created_at, category)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            (title, description, technologies, project_link, created_at, category, category_custom)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -952,12 +1025,16 @@ class ProjectRepository(Repository):
                 values["technologies"],
                 values["project_link"],
                 values["created_at"],
-                values["category"]
+                values["category"],
+                values["category_custom"]
             )
         )
         return cursor.fetchone()["id"]
 
     def update(self, cursor, project_id, values):
+        values = dict(values, category_custom=self._consistent_custom_name(
+            cursor, values["category_custom"], exclude_id=project_id
+        ))
         cursor.execute(
             """
             UPDATE projects
@@ -966,7 +1043,8 @@ class ProjectRepository(Repository):
                 technologies = %s,
                 project_link = %s,
                 created_at = %s,
-                category = %s
+                category = %s,
+                category_custom = %s
             WHERE id = %s
             """,
             (
@@ -976,9 +1054,28 @@ class ProjectRepository(Repository):
                 values["project_link"],
                 values["created_at"],
                 values["category"],
+                values["category_custom"],
                 project_id
             )
         )
+
+    def custom_category_names(self):
+        """Names already used for "Other" projects, for the form's suggestions."""
+        connection = self._connect()
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                """
+                SELECT DISTINCT ON (lower(category_custom)) category_custom AS name
+                FROM projects
+                WHERE category = 'other' AND category_custom <> ''
+                ORDER BY lower(category_custom), id
+                """
+            )
+            return [row["name"] for row in cursor.fetchall()]
+        finally:
+            cursor.close()
+            connection.close()
 
     @staticmethod
     def to_viewer_data(project):
@@ -994,7 +1091,7 @@ class ProjectRepository(Repository):
                 if technology.strip()
             ],
             "link": project["project_link"] or "",
-            "category": ProjectCategories.label(project["category"]),
+            "category": ProjectCategories.display_label(project),
             "gallery": [
                 {"url": media["url"], "kind": media["kind"]}
                 for media in project["gallery"]
@@ -2283,8 +2380,10 @@ class PortfolioApp:
             media_url=storage.url,
             direct_uploads=storage.supports_direct_upload,
             # {{ category_label(project.category) }} and the form's choices.
-            category_label=ProjectCategories.label,
-            category_choices=ProjectCategories.CHOICES
+            category_label=ProjectCategories.display_label,
+            category_key=ProjectCategories.filter_key,
+            category_choices=ProjectCategories.CHOICES,
+            custom_category_names=self._services.projects.custom_category_names
         )
 
     def _register_routes(self):

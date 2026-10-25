@@ -245,7 +245,7 @@
                     <article
                         class="portfolio-project-card"
                         data-project-index="{{ loop.index0 }}"
-                        data-category="{{ project.category }}"
+                        data-category="{{ category_key(project) }}"
                     >
 
                         <!-- PROJECT MEDIA (opens the project viewer) -->
@@ -293,7 +293,7 @@
 
                             <p class="portfolio-project-date certificate-dates">
                                 <span>{{ project.created_at }}</span>
-                                <span class="category-tag">{{ category_label(project.category) }}</span>
+                                <span class="category-tag">{{ category_label(project) }}</span>
                             </p>
 
                             <h3>

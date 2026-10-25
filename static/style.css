@@ -8879,3 +8879,45 @@ button.is-busy {
         font-size: 21px;
     }
 }
+
+
+/* "Other" category: the admin names it (Add / Edit Project). */
+.category-other {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px dashed #d7c3e8;
+    border-radius: 12px;
+    background: #fcfaff;
+}
+
+.category-other[hidden] {
+    display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .category-other:not([hidden]) {
+        animation: chip-in 220ms ease both;
+    }
+}
+
+.category-other label {
+    margin: 0;
+    color: var(--color-ink);
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.category-suggestion-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+[data-theme="dark"] .category-other {
+    border-color: #4a3c5c;
+    background: #1a1521;
+}

@@ -4,6 +4,7 @@
     The list itself is ProjectCategories in app.py.
 #}
 {% set chosen_category = form.get('category', project.category if project else '') %}
+{% set chosen_custom = form.get('category_custom', project.category_custom if project else '') %}
 
 <fieldset class="form-group category-picker">
 
@@ -27,5 +28,65 @@
             </label>
         {% endfor %}
     </div>
+
+    <!-- "Other": name your own category (like the "Other" technology field) -->
+    <div class="category-other" id="category-other" {% if chosen_category != 'other' %}hidden{% endif %}>
+
+        <label for="category_custom">
+            Name this category
+        </label>
+
+        <p class="form-help">Optional. Shown as the project's category and as its own filter on your portfolio. Leave empty to show "Other".</p>
+
+        <input
+            type="text"
+            id="category_custom"
+            name="category_custom"
+            maxlength="40"
+            list="category-suggestions"
+            placeholder="Example: Photography"
+            value="{{ chosen_custom }}"
+        >
+
+        {% set suggestions = custom_category_names() %}
+        <datalist id="category-suggestions">
+            {% for name in suggestions %}
+                <option value="{{ name }}"></option>
+            {% endfor %}
+        </datalist>
+
+        {% if suggestions %}
+            <div class="category-suggestion-chips" aria-label="Names you have used">
+                {% for name in suggestions %}
+                    <button type="button" class="technology-button" data-category-suggestion="{{ name }}">{{ name }}</button>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+    </div>
+
+    <script>
+        // Show the name box only while "Other" is chosen.
+        (() => {
+            const box = document.getElementById("category-other");
+            const input = document.getElementById("category_custom");
+            document.querySelectorAll('input[name="category"]').forEach(radio => {
+                radio.addEventListener("change", () => {
+                    const isOther = radio.value === "other" && radio.checked;
+                    box.hidden = !isOther;
+                    if (isOther) {
+                        input.focus();
+                    }
+                });
+            });
+            box.addEventListener("click", event => {
+                const chip = event.target.closest("[data-category-suggestion]");
+                if (chip) {
+                    input.value = chip.dataset.categorySuggestion;
+                    input.dispatchEvent(new Event("input", { bubbles: true }));
+                }
+            });
+        })();
+    </script>
 
 </fieldset>

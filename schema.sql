@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS projects (
 -- Added later: one category per project (the list lives in app.py,
 -- ProjectCategories). Projects that existed before start as websites.
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS category VARCHAR(40) NOT NULL DEFAULT 'websites';
+-- The admin's own name for an "Other" category, e.g. Photography.
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS category_custom VARCHAR(40) NOT NULL DEFAULT '';
 
 -- Gallery files of each project, in display order.
 CREATE TABLE IF NOT EXISTS project_media (
