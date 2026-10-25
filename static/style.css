@@ -8921,3 +8921,315 @@ button.is-busy {
     border-color: #4a3c5c;
     background: #1a1521;
 }
+
+
+/* =========================================================
+   COVER FRAMING
+   The admin's crop of a project cover (CoverFraming in app.py),
+   set as --cover-x / --cover-y / --cover-zoom on the frame. The same
+   rules draw the portfolio cards, the dashboard and the editor's
+   previews, so the previews are exact.
+========================================================= */
+
+.cover-framed {
+    overflow: hidden;
+}
+
+.cover-framed > img,
+.cover-framed > video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: var(--cover-x, 50%) var(--cover-y, 50%);
+    transform-origin: var(--cover-x, 50%) var(--cover-y, 50%);
+    transform: scale(var(--cover-zoom, 1));
+}
+
+@media (hover: hover) {
+    .portfolio-project-card:hover .cover-framed > img,
+    .project-card:hover .cover-framed > img {
+        transform: scale(calc(var(--cover-zoom, 1) * 1.05));
+    }
+}
+
+/* The editor (Add / Edit Project) */
+.cover-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px;
+    border: 1px solid #e9e2ef;
+    border-radius: 12px;
+    background: #fcfaff;
+}
+
+.cover-editor-heading h3 {
+    margin: 0 0 4px;
+    color: #493b57;
+    font-size: 14px;
+    font-weight: 650;
+}
+
+.cover-editor-heading p {
+    margin: 0;
+}
+
+.cover-editor-note {
+    margin: 0;
+    padding: 14px;
+    border: 1px dashed #d7c3e8;
+    border-radius: 10px;
+    color: #7a7184;
+    font-size: 13px;
+    text-align: center;
+}
+
+.cover-editor-note[hidden],
+.cover-editor-body[hidden] {
+    display: none;
+}
+
+.cover-editor-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.cover-stage {
+    position: relative;
+    width: 100%;
+    max-width: 560px;
+    aspect-ratio: 363 / 205;
+    border-radius: 12px;
+    background: #f2edf7;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.cover-stage.is-dragging {
+    cursor: grabbing;
+}
+
+.cover-stage:focus-visible {
+    outline: 3px solid rgba(117, 64, 184, 0.55);
+    outline-offset: 2px;
+}
+
+.cover-stage > img,
+.cover-stage > video,
+.cover-preview-frame > img,
+.cover-preview-frame > video {
+    pointer-events: none;
+}
+
+/* Thirds grid while dragging, to help line things up */
+.cover-stage-grid {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+        linear-gradient(90deg, transparent calc(33.33% - 0.5px), rgba(255, 255, 255, 0.7) calc(33.33% - 0.5px), rgba(255, 255, 255, 0.7) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), rgba(255, 255, 255, 0.7) calc(66.66% - 0.5px), rgba(255, 255, 255, 0.7) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px)),
+        linear-gradient(180deg, transparent calc(33.33% - 0.5px), rgba(255, 255, 255, 0.7) calc(33.33% - 0.5px), rgba(255, 255, 255, 0.7) calc(33.33% + 0.5px), transparent calc(33.33% + 0.5px), transparent calc(66.66% - 0.5px), rgba(255, 255, 255, 0.7) calc(66.66% - 0.5px), rgba(255, 255, 255, 0.7) calc(66.66% + 0.5px), transparent calc(66.66% + 0.5px));
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms ease;
+}
+
+.cover-stage.is-dragging .cover-stage-grid {
+    opacity: 1;
+}
+
+.cover-stage-hint {
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    z-index: 1;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(28, 20, 38, 0.6);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    pointer-events: none;
+    transform: translateX(-50%);
+    transition: opacity 160ms ease;
+}
+
+.cover-stage.is-dragging .cover-stage-hint {
+    opacity: 0;
+}
+
+.cover-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    max-width: 560px;
+}
+
+.cover-controls label {
+    margin: 0;
+    color: #493b57;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.cover-controls input[type="range"] {
+    flex: 1 1 140px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    accent-color: var(--color-primary);
+}
+
+.cover-controls output {
+    min-width: 3.2em;
+    color: var(--color-muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.cover-reset {
+    padding: 6px 14px;
+    border: 1px solid #e3d8ec;
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.cover-reset:hover {
+    background: var(--color-primary-soft);
+}
+
+.cover-preview-heading {
+    margin: 4px 0 0;
+    color: #493b57;
+    font-size: 13px;
+    font-weight: 650;
+}
+
+/* Each preview is a card of the real shape, at 55% of its real size
+   (36% on phones, so they sit side by side) */
+.cover-previews {
+    --preview-scale: 0.55;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+}
+
+@media (max-width: 600px) {
+    .cover-previews {
+        --preview-scale: 0.36;
+        gap: 12px 10px;
+    }
+}
+
+.cover-preview {
+    width: calc(var(--frame-w) * var(--preview-scale) * 1px);
+    max-width: 100%;
+    margin: 0;
+}
+
+.cover-preview-card {
+    overflow: hidden;
+    border: 1px solid #eee5f3;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 4px 12px rgba(60, 30, 80, 0.06);
+}
+
+.cover-preview-frame {
+    aspect-ratio: var(--frame-w) / var(--frame-h);
+    background: #f2edf7;
+}
+
+.cover-preview-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 7px 9px 9px;
+}
+
+.cover-preview-date {
+    width: 40%;
+    height: 5px;
+    border-radius: 3px;
+    background: #ece4f3;
+}
+
+.cover-preview-title {
+    overflow: hidden;
+    color: var(--color-ink);
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.cover-preview figcaption {
+    margin-top: 5px;
+    color: #493b57;
+    font-size: 12px;
+    font-weight: 650;
+}
+
+.cover-preview figcaption span {
+    display: block;
+    color: #8a8195;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+[data-theme="dark"] .cover-editor {
+    border-color: #352c40;
+    background: #1a1521;
+}
+
+[data-theme="dark"] .cover-editor-heading h3,
+[data-theme="dark"] .cover-controls label,
+[data-theme="dark"] .cover-preview-heading,
+[data-theme="dark"] .cover-preview figcaption {
+    color: var(--color-ink);
+}
+
+[data-theme="dark"] .cover-preview figcaption span,
+[data-theme="dark"] .cover-editor-note {
+    color: var(--color-muted);
+}
+
+[data-theme="dark"] .cover-editor-note {
+    border-color: #4a3c5c;
+}
+
+[data-theme="dark"] .cover-stage,
+[data-theme="dark"] .cover-preview-frame {
+    background: #2c2338;
+}
+
+[data-theme="dark"] .cover-preview-card {
+    border-color: #352c40;
+    background: var(--surface-raised);
+}
+
+[data-theme="dark"] .cover-preview-date {
+    background: #3a3047;
+}
+
+[data-theme="dark"] .cover-reset {
+    border-color: #4a3c5c;
+    background: var(--surface-raised);
+    color: var(--color-accent);
+}
+
+[data-theme="dark"] .cover-reset:hover {
+    background: var(--color-primary-soft);
+}

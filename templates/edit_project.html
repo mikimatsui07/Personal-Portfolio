@@ -36,6 +36,7 @@
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='menu.js') }}"></script>
     <script src="{{ url_for('static', filename='media-picker.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='cover-editor.js') }}" defer></script>
     <script src="{{ url_for('static', filename='unsaved-guard.js') }}" defer></script>
     {% if direct_uploads %}<script src="{{ url_for('static', filename='direct-upload.js') }}" defer></script>{% endif %}
 
@@ -257,7 +258,7 @@
                         {% if project.gallery %}
                             <div class="media-gallery-grid">
                                 {% for media in project.gallery %}
-                                    <div class="media-gallery-item">
+                                    <div class="media-gallery-item" data-cover-url="{{ media.url }}" data-cover-kind="{{ media.kind }}">
                                         <div class="media-gallery-thumb">
                                             {% if media.kind == 'image' %}
                                                 <img src="{{ media.url }}" alt="Project file {{ loop.index }}" loading="lazy">
@@ -310,6 +311,11 @@
                         <div class="media-tiles" id="selected-files" aria-live="polite"></div>
                         <small id="media-help">Add files in one go or a few at a time; use × to remove one. PNG, JPG, GIF, WebP, MP4, WebM, MOV, or PDF. Maximum 16 MB each.</small>
                     </section>
+
+
+                    <!-- COVER FRAMING -->
+
+                    {% include "_cover_editor.html" %}
 
 
                     <!-- BUTTONS -->

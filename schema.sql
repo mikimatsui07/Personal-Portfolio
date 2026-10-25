@@ -23,6 +23,11 @@ CREATE TABLE IF NOT EXISTS projects (
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS category VARCHAR(40) NOT NULL DEFAULT 'websites';
 -- The admin's own name for an "Other" category, e.g. Photography.
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS category_custom VARCHAR(40) NOT NULL DEFAULT '';
+-- How the cover sits in its card (CoverFraming in app.py): focus point in
+-- percent and zoom. The file itself is never cropped.
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS cover_x REAL NOT NULL DEFAULT 50;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS cover_y REAL NOT NULL DEFAULT 50;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS cover_zoom REAL NOT NULL DEFAULT 1;
 
 -- Gallery files of each project, in display order.
 CREATE TABLE IF NOT EXISTS project_media (

@@ -677,6 +677,51 @@ class ProjectCategories:
         return standard + custom + plain_other
 
 
+class CoverFraming:
+    """How a project's cover sits in its card: a focus point and a zoom.
+
+    The file itself is never cropped. The card shows it with
+    object-position (cover_x, cover_y, in percent) and scale(cover_zoom),
+    so the admin can reframe it at any time and the viewer still shows
+    the whole picture.
+    """
+
+    DEFAULTS = {"cover_x": 50.0, "cover_y": 50.0, "cover_zoom": 1.0}
+    LIMITS = {"cover_x": (0.0, 100.0), "cover_y": (0.0, 100.0), "cover_zoom": (1.0, 3.0)}
+
+    @classmethod
+    def from_form(cls, form):
+        """Read the editor's values; anything missing or odd falls back to centered."""
+        values = {}
+        for field, default in cls.DEFAULTS.items():
+            low, high = cls.LIMITS[field]
+            try:
+                number = float(form.get(field, default))
+            except (TypeError, ValueError):
+                number = default
+            if number != number:  # NaN
+                number = default
+            values[field] = round(min(max(number, low), high), 2)
+        return values
+
+    @classmethod
+    def of(cls, project):
+        return {
+            field: float(project.get(field) if project.get(field) is not None else default)
+            for field, default in cls.DEFAULTS.items()
+        }
+
+    @classmethod
+    def style(cls, project):
+        """CSS variables for the cover's frame (see .cover-framed in style.css)."""
+        framing = cls.of(project)
+        return (
+            f"--cover-x: {framing['cover_x']:g}%; "
+            f"--cover-y: {framing['cover_y']:g}%; "
+            f"--cover-zoom: {framing['cover_zoom']:g}"
+        )
+
+
 class ProjectFormValidator(FormValidator):
 
     def validate(self, form):
@@ -726,7 +771,8 @@ class ProjectFormValidator(FormValidator):
             "created_at": created_at,
             "project_link": project_link,
             "category": category,
-            "category_custom": category_custom
+            "category_custom": category_custom,
+            **CoverFraming.from_form(form)
         }, None
 
 
@@ -1015,8 +1061,9 @@ class ProjectRepository(Repository):
         cursor.execute(
             """
             INSERT INTO projects
-            (title, description, technologies, project_link, created_at, category, category_custom)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            (title, description, technologies, project_link, created_at, category, category_custom,
+             cover_x, cover_y, cover_zoom)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -1026,7 +1073,10 @@ class ProjectRepository(Repository):
                 values["project_link"],
                 values["created_at"],
                 values["category"],
-                values["category_custom"]
+                values["category_custom"],
+                values["cover_x"],
+                values["cover_y"],
+                values["cover_zoom"]
             )
         )
         return cursor.fetchone()["id"]
@@ -1044,7 +1094,10 @@ class ProjectRepository(Repository):
                 project_link = %s,
                 created_at = %s,
                 category = %s,
-                category_custom = %s
+                category_custom = %s,
+                cover_x = %s,
+                cover_y = %s,
+                cover_zoom = %s
             WHERE id = %s
             """,
             (
@@ -1055,6 +1108,9 @@ class ProjectRepository(Repository):
                 values["created_at"],
                 values["category"],
                 values["category_custom"],
+                values["cover_x"],
+                values["cover_y"],
+                values["cover_zoom"],
                 project_id
             )
         )
@@ -2382,6 +2438,8 @@ class PortfolioApp:
             # {{ category_label(project.category) }} and the form's choices.
             category_label=ProjectCategories.display_label,
             category_key=ProjectCategories.filter_key,
+            # style="{{ cover_style(project) }}" on a .cover-framed box.
+            cover_style=CoverFraming.style,
             category_choices=ProjectCategories.CHOICES,
             custom_category_names=self._services.projects.custom_category_names
         )

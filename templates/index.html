@@ -251,7 +251,8 @@
                         <!-- PROJECT MEDIA (opens the project viewer) -->
                         <button
                             type="button"
-                            class="portfolio-project-image portfolio-project-open"
+                            class="portfolio-project-image portfolio-project-open{% if cover and cover.kind in ('image', 'video') %} cover-framed{% endif %}"
+                            {% if cover and cover.kind in ('image', 'video') %}style="{{ cover_style(project) }}"{% endif %}
                             aria-label="Open {{ project.title }}{% if extra_count > 0 %}, {{ project.gallery | length }} files{% endif %}"
                         >
 

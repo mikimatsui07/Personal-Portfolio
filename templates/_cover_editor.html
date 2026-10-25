@@ -1,0 +1,89 @@
+{#
+    Cover framing (drag to crop, slider to zoom, previews per device),
+    used by Add and Edit Project. Uses: form (submitted values),
+    project (when editing). Driven by static/cover-editor.js; the
+    values are CoverFraming in app.py.
+#}
+{% set cover_x = form.get('cover_x', project.cover_x if project else 50) %}
+{% set cover_y = form.get('cover_y', project.cover_y if project else 50) %}
+{% set cover_zoom = form.get('cover_zoom', project.cover_zoom if project else 1) %}
+
+<section class="form-group cover-editor" id="cover-editor" data-media-input="#media" aria-labelledby="cover-editor-heading">
+
+    <div class="cover-editor-heading">
+        <h3 id="cover-editor-heading">Cover Framing</h3>
+        <p class="form-help">
+            Drag the picture to choose what shows, and zoom in to crop closer.
+            Your file isn't changed: visitors still see all of it when they open the project.
+        </p>
+    </div>
+
+    <p class="cover-editor-note" data-cover-empty>
+        Add an image or video above and the cover will appear here, ready to frame.
+    </p>
+
+    <p class="cover-editor-note" data-cover-document hidden>
+        The cover is a PDF, so your portfolio shows it as a PDF tile and there's nothing to frame.
+        To use a picture as the cover, put an image or video first.
+    </p>
+
+    <div class="cover-editor-body" data-cover-body hidden>
+
+        <div
+            class="cover-stage cover-framed"
+            data-cover-stage
+            tabindex="0"
+            role="group"
+            aria-label="Cover picture. Drag or use the arrow keys to move it; plus and minus zoom."
+        >
+            <span class="cover-stage-grid" aria-hidden="true"></span>
+            <span class="cover-stage-hint" aria-hidden="true">Drag to move</span>
+        </div>
+
+        <div class="cover-controls">
+            <label for="cover_zoom">Zoom</label>
+            <input
+                type="range"
+                id="cover_zoom"
+                name="cover_zoom"
+                min="1"
+                max="3"
+                step="0.01"
+                value="{{ cover_zoom }}"
+            >
+            <output for="cover_zoom" id="cover-zoom-value">{{ '%.1f' | format(cover_zoom | float) }}×</output>
+            <button type="button" class="cover-reset" data-cover-reset>Reset</button>
+        </div>
+
+        <p class="visually-hidden" aria-live="polite" data-cover-status></p>
+
+        <p class="cover-preview-heading">How it looks on your portfolio</p>
+
+        <div class="cover-previews">
+            {#  name, screen width, card cover size (measured from style.css)  #}
+            {% for name, screen, width, height in [
+                ("Small phone", 320, 263, 205),
+                ("Phone", 375, 318, 205),
+                ("Tablet", 768, 334, 205),
+                ("Desktop", 1280, 363, 205),
+                ("Large phone", 600, 523, 205)
+            ] %}
+                <figure class="cover-preview" style="--frame-w: {{ width }}; --frame-h: {{ height }}">
+                    <div class="cover-preview-card">
+                        <div class="cover-preview-frame cover-framed" data-cover-frame></div>
+                        <div class="cover-preview-text">
+                            <span class="cover-preview-date"></span>
+                            <span class="cover-preview-title" data-cover-title></span>
+                        </div>
+                    </div>
+                    <figcaption>{{ name }} <span>{{ screen }}px screen</span></figcaption>
+                </figure>
+            {% endfor %}
+        </div>
+
+    </div>
+
+    <input type="hidden" name="cover_x" value="{{ cover_x }}">
+    <input type="hidden" name="cover_y" value="{{ cover_y }}">
+
+</section>

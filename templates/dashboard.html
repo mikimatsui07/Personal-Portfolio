@@ -298,9 +298,12 @@
 
                                 <!-- PROJECT MEDIA -->
 
-                                <div class="project-media">
+                                {% set cover = project.gallery[0] if project.gallery else none %}
 
-                                    {% set cover = project.gallery[0] if project.gallery else none %}
+                                <div
+                                    class="project-media{% if cover and cover.kind in ('image', 'video') %} cover-framed{% endif %}"
+                                    {% if cover and cover.kind in ('image', 'video') %}style="{{ cover_style(project) }}"{% endif %}
+                                >
 
                                     {% if cover and cover.kind == 'image' %}
 

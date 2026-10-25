@@ -38,6 +38,7 @@
     <script src="{{ url_for('static', filename='loading.js') }}"></script>
     <script src="{{ url_for('static', filename='menu.js') }}"></script>
     <script src="{{ url_for('static', filename='media-picker.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='cover-editor.js') }}" defer></script>
     <script src="{{ url_for('static', filename='unsaved-guard.js') }}" defer></script>
     {% if direct_uploads %}<script src="{{ url_for('static', filename='direct-upload.js') }}" defer></script>{% endif %}
 
@@ -620,6 +621,14 @@
                         Add up to 10 files, in one go or a few at a time. Use × to remove a file you added by mistake. The first file is the cover shown on your portfolio.
                         PNG, JPG, GIF, WebP, MP4, WebM, MOV, or PDF. Maximum 16 MB each.
                     </p>
+
+
+
+                    <!-- =========================
+                         COVER FRAMING
+                    ========================== -->
+
+                    {% include "_cover_editor.html" %}
 
 
 
