@@ -8586,3 +8586,259 @@ button.is-busy {
     background: #2c2338;
     color: var(--color-ink);
 }
+
+
+/* =========================================================
+   PROJECT CATEGORIES
+   Filter buttons on the portfolio (static/project-filter.js),
+   the category tag on cards / viewer / dashboard, and the
+   category picker on Add / Edit Project.
+========================================================= */
+
+/* Read by screen readers, not shown on screen. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* ---------- Filter bar ---------- */
+
+.project-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: -14px 0 28px;
+}
+
+.project-filter-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--color-ink);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.project-filter-button:hover {
+    border-color: #d3c0e8;
+    color: var(--color-primary-dark);
+}
+
+.project-filter-button[aria-pressed="true"] {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    box-shadow: 0 6px 16px rgba(120, 73, 189, 0.2);
+    color: #fff;
+}
+
+.project-filter-count {
+    min-width: 22px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    font-size: 12px;
+    text-align: center;
+}
+
+.project-filter-button[aria-pressed="true"] .project-filter-count {
+    background: rgba(255, 255, 255, 0.22);
+    color: #fff;
+}
+
+/* Cards hidden by a filter (their own display rule would win otherwise). */
+.portfolio-project-card[hidden] {
+    display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .portfolio-project-card.filter-in {
+        animation: filter-in 320ms cubic-bezier(0.2, 0.7, 0.2, 1);
+    }
+}
+
+@keyframes filter-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+}
+
+/* Phones: one scrollable row instead of several wrapped lines. */
+@media (max-width: 600px) {
+    .project-filter {
+        flex-wrap: nowrap;
+        margin-right: -20px;
+        margin-left: -20px;
+        padding: 2px 20px 6px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .project-filter::-webkit-scrollbar {
+        display: none;
+    }
+
+    .project-filter-button {
+        flex: 0 0 auto;
+    }
+}
+
+@media (max-width: 300px) {
+    .project-filter {
+        margin-right: -14px;
+        margin-left: -14px;
+        padding-right: 14px;
+        padding-left: 14px;
+    }
+
+    .project-filter-button {
+        min-height: 36px;
+        padding: 6px 11px;
+        font-size: 13px;
+    }
+}
+
+/* ---------- Category tag ---------- */
+
+.category-tag {
+    padding: 2px 9px;
+    border-radius: 999px;
+    background: var(--color-primary-soft);
+    color: var(--color-primary-dark);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.category-tag[hidden] {
+    display: none;
+}
+
+/* ---------- Category picker (admin) ---------- */
+
+.category-picker {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.category-picker legend {
+    margin-top: 8px;
+    margin-bottom: 4px;
+    padding: 0;
+    color: var(--color-ink);
+    font-size: 13px;
+    font-weight: 650;
+}
+
+.category-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.category-option {
+    position: relative;
+    cursor: pointer;
+}
+
+.category-option input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.category-option span {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 8px 14px;
+    border: 1px solid #e3d9ed;
+    border-radius: 999px;
+    background: #fff;
+    color: #655572;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.category-option:hover span {
+    border-color: #9c7ac0;
+}
+
+.category-option input:checked + span {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: #fff;
+}
+
+.category-option input:checked + span::before {
+    margin-right: 6px;
+    content: "✓";
+}
+
+.category-option input:focus-visible + span {
+    outline: 3px solid rgba(117, 64, 184, 0.45);
+    outline-offset: 2px;
+}
+
+/* ---------- Dark mode ---------- */
+
+[data-theme="dark"] .project-filter-button {
+    border-color: var(--color-border);
+    background: var(--surface);
+    color: var(--color-ink);
+}
+
+[data-theme="dark"] .project-filter-button:hover {
+    border-color: #4f3f66;
+    color: var(--color-accent);
+}
+
+[data-theme="dark"] .project-filter-button[aria-pressed="true"] {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: #fff;
+}
+
+[data-theme="dark"] .project-filter-count,
+[data-theme="dark"] .category-tag {
+    background: #2c2338;
+    color: #d6bff5;
+}
+
+[data-theme="dark"] .project-filter-button[aria-pressed="true"] .project-filter-count {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+[data-theme="dark"] .category-option span {
+    border-color: #3d3349;
+    background: var(--surface-raised);
+    color: #d6cde0;
+}
+
+[data-theme="dark"] .category-option input:checked + span {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: #fff;
+}
+
+/* Older generic label rules add margins; the pills only use the row gap. */
+.category-options .category-option {
+    display: inline-flex;
+    margin: 0;
+}

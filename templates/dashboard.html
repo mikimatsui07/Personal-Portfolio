@@ -342,8 +342,9 @@
 
                                 <div class="project-card-content">
 
-                                    <span class="project-date">
-                                        {{ project.created_at }}
+                                    <span class="project-date certificate-dates">
+                                        <span>{{ project.created_at }}</span>
+                                        <span class="category-tag">{{ category_label(project.category) }}</span>
                                     </span>
 
                                     <h3>

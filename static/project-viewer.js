@@ -242,6 +242,11 @@
     function fillInfo() {
         titleElement.textContent = current.title;
         dateElement.textContent = current.date;
+        const categoryElement = document.getElementById("viewer-category");
+        if (categoryElement) {
+            categoryElement.textContent = current.category || "";
+            categoryElement.hidden = !current.category;
+        }
         descriptionElement.textContent = current.description;
 
         tagsElement.replaceChildren(...current.technologies.map(technology => {

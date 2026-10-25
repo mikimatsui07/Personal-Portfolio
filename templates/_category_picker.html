@@ -1,0 +1,31 @@
+{#
+    Project category (one per project), used by Add and Edit Project.
+    Uses: form (submitted values), project (when editing).
+    The list itself is ProjectCategories in app.py.
+#}
+{% set chosen_category = form.get('category', project.category if project else '') %}
+
+<fieldset class="form-group category-picker">
+
+    <legend>
+        Category
+    </legend>
+
+    <p class="form-help">Where this project appears when visitors filter your portfolio.</p>
+
+    <div class="category-options">
+        {% for key, label in category_choices %}
+            <label class="category-option">
+                <input
+                    type="radio"
+                    name="category"
+                    value="{{ key }}"
+                    {% if chosen_category == key %}checked{% endif %}
+                    required
+                >
+                <span>{{ label }}</span>
+            </label>
+        {% endfor %}
+    </div>
+
+</fieldset>

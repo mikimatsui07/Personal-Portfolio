@@ -605,6 +605,40 @@ class FormValidator(ABC):
         """Return (values, error message or None)."""
 
 
+class ProjectCategories:
+    """The fixed list of project categories, in display order.
+
+    Each project has exactly one. The key is stored in the database;
+    the label is what visitors and the admin see. To add a category,
+    add a line here (existing projects keep theirs).
+    """
+
+    CHOICES = (
+        ("websites", "Websites & Apps"),
+        ("digital-art", "Digital Art"),
+        ("animation", "Animation"),
+        ("graphic-design", "Graphic Design"),
+        ("other", "Other"),
+    )
+    LABELS = dict(CHOICES)
+
+    @classmethod
+    def is_valid(cls, key):
+        return key in cls.LABELS
+
+    @classmethod
+    def label(cls, key):
+        return cls.LABELS.get(key, cls.LABELS["other"])
+
+    @classmethod
+    def in_use(cls, projects):
+        """[(key, label, count)] for categories that have projects."""
+        counts = {}
+        for project in projects:
+            counts[project["category"]] = counts.get(project["category"], 0) + 1
+        return [(key, label, counts[key]) for key, label in cls.CHOICES if key in counts]
+
+
 class ProjectFormValidator(FormValidator):
 
     def validate(self, form):
@@ -613,9 +647,13 @@ class ProjectFormValidator(FormValidator):
         technologies = (form.get("technologies") or "").strip()
         created_at = (form.get("created_at") or "").strip()
         project_link = (form.get("project_link") or "").strip()
+        category = (form.get("category") or "").strip()
 
         if not title or not description or not created_at:
             return None, "Title, description, and project date are required."
+
+        if not ProjectCategories.is_valid(category):
+            return None, "Choose a category for the project."
 
         if len(title) > 160 or len(description) > 5000:
             return None, "Title must be 160 characters or fewer and description 5,000 characters or fewer."
@@ -641,7 +679,8 @@ class ProjectFormValidator(FormValidator):
             "description": description,
             "technologies": technologies,
             "created_at": created_at,
-            "project_link": project_link
+            "project_link": project_link,
+            "category": category
         }, None
 
 
@@ -895,8 +934,8 @@ class ProjectRepository(Repository):
         cursor.execute(
             """
             INSERT INTO projects
-            (title, description, technologies, project_link, created_at)
-            VALUES (%s, %s, %s, %s, %s)
+            (title, description, technologies, project_link, created_at, category)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -904,7 +943,8 @@ class ProjectRepository(Repository):
                 values["description"],
                 values["technologies"],
                 values["project_link"],
-                values["created_at"]
+                values["created_at"],
+                values["category"]
             )
         )
         return cursor.fetchone()["id"]
@@ -917,7 +957,8 @@ class ProjectRepository(Repository):
                 description = %s,
                 technologies = %s,
                 project_link = %s,
-                created_at = %s
+                created_at = %s,
+                category = %s
             WHERE id = %s
             """,
             (
@@ -926,6 +967,7 @@ class ProjectRepository(Repository):
                 values["technologies"],
                 values["project_link"],
                 values["created_at"],
+                values["category"],
                 project_id
             )
         )
@@ -944,6 +986,7 @@ class ProjectRepository(Repository):
                 if technology.strip()
             ],
             "link": project["project_link"] or "",
+            "category": ProjectCategories.label(project["category"]),
             "gallery": [
                 {"url": media["url"], "kind": media["kind"]}
                 for media in project["gallery"]
@@ -1419,6 +1462,8 @@ class HomeView(PageView):
         return self.render(
             content_version=content_version,
             projects=projects,
+            # Filter buttons: only categories that have projects.
+            project_categories=ProjectCategories.in_use(projects),
             project_data=project_data,
             certificates=shown_certificates,
             # Everything the certificate viewer needs, sent as JSON.
@@ -2224,7 +2269,10 @@ class PortfolioApp:
         # {{ media_url(name) }} works with either storage.
         self._flask.jinja_env.globals.update(
             media_url=storage.url,
-            direct_uploads=storage.supports_direct_upload
+            direct_uploads=storage.supports_direct_upload,
+            # {{ category_label(project.category) }} and the form's choices.
+            category_label=ProjectCategories.label,
+            category_choices=ProjectCategories.CHOICES
         )
 
     def _register_routes(self):

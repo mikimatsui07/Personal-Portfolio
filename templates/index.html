@@ -216,7 +216,22 @@
         </div>
 
 
-        <div class="portfolio-project-grid">
+        {% if project_categories %}
+            <!-- CATEGORY FILTER (static/project-filter.js) -->
+            <div class="project-filter" role="group" aria-label="Filter projects by category">
+                <button type="button" class="project-filter-button" data-filter="all" aria-pressed="true">
+                    All <span class="project-filter-count">{{ projects | length }}</span>
+                </button>
+                {% for key, label, count in project_categories %}
+                    <button type="button" class="project-filter-button" data-filter="{{ key }}" aria-pressed="false">
+                        {{ label }} <span class="project-filter-count">{{ count }}</span>
+                    </button>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+
+        <div class="portfolio-project-grid" id="project-grid">
 
             {% if projects %}
 
@@ -228,6 +243,7 @@
                     <article
                         class="portfolio-project-card"
                         data-project-index="{{ loop.index0 }}"
+                        data-category="{{ project.category }}"
                     >
 
                         <!-- PROJECT MEDIA (opens the project viewer) -->
@@ -273,8 +289,9 @@
                         <!-- PROJECT INFORMATION -->
                         <div class="portfolio-project-content">
 
-                            <p class="portfolio-project-date">
-                                {{ project.created_at }}
+                            <p class="portfolio-project-date certificate-dates">
+                                <span>{{ project.created_at }}</span>
+                                <span class="category-tag">{{ category_label(project.category) }}</span>
                             </p>
 
                             <h3>
@@ -386,7 +403,10 @@
 
             <div class="viewer-info">
 
-                <p class="portfolio-project-date" id="viewer-date"></p>
+                <p class="portfolio-project-date certificate-dates">
+                    <span id="viewer-date"></span>
+                    <span class="category-tag" id="viewer-category"></span>
+                </p>
 
                 <h3 id="viewer-title"></h3>
 
@@ -851,6 +871,7 @@
 
     <script src="{{ url_for('static', filename='project-viewer.js') }}"></script>
     <script src="{{ url_for('static', filename='certificate-viewer.js') }}"></script>
+    <script src="{{ url_for('static', filename='project-filter.js') }}"></script>
 
     <script>
         // A message was just sent: a dashboard open in this browser shows
