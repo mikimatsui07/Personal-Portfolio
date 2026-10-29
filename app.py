@@ -55,7 +55,9 @@ from db import get_db_connection
 # AUTHENTICATION HELPERS
 # =========================================================
 
+# Decorator: anyone who is not logged in is sent to the login page first.
 def login_required(view_func):
+    # The wrapped page: runs only when an admin is logged in.
     @wraps(view_func)
     def decorated_function(*args, **kwargs):
         if "admin_id" not in session:
@@ -68,6 +70,7 @@ def login_required(view_func):
 class PasswordChecker:
     """Compares a stored password (hashed or plain) with a submitted one."""
 
+    # True when the typed password matches the saved one (hashed, or plain text from the old database).
     @staticmethod
     def matches(stored_password, submitted_password):
         if not stored_password:
@@ -92,6 +95,7 @@ class MediaFile:
     IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
     VIDEO_EXTENSIONS = {".mp4", ".webm", ".mov"}
 
+    # Looks at the file extension: "image", "video", "pdf" or "file".
     @classmethod
     def kind_of(cls, filename):
         extension = os.path.splitext(filename)[1].lower()
@@ -175,13 +179,16 @@ class LocalStorage(FileStorage):
     ``app.config["UPLOAD_FOLDER"]`` takes effect immediately.
     """
 
+    # Encapsulation: the Flask app is kept private in _app.
     def __init__(self, flask_app):
         self._app = flask_app
 
+    # Read-only property: the uploads folder (static/uploads).
     @property
     def folder(self):
         return self._app.config["UPLOAD_FOLDER"]
 
+    # Full path of a file, or None if the name tries to leave the uploads folder (security).
     def _path(self, filename):
         upload_folder = os.path.realpath(self.folder)
         file_path = os.path.realpath(os.path.join(upload_folder, filename))
@@ -189,6 +196,7 @@ class LocalStorage(FileStorage):
             return None
         return file_path
 
+    # Polymorphism: saves the file to this computer's disk.
     def write(self, filename, stream, content_type):
         path = self._path(filename)
         if path is None:
@@ -197,6 +205,7 @@ class LocalStorage(FileStorage):
         with open(path, "wb") as target:
             shutil.copyfileobj(stream, target)
 
+    # Polymorphism: deletes the file from the disk.
     def remove(self, filename):
         if not filename:
             return
@@ -211,12 +220,15 @@ class LocalStorage(FileStorage):
         if os.path.isfile(file_path):
             os.remove(file_path)
 
+    # Polymorphism: a /static/uploads/... address.
     def url(self, filename):
         return url_for("static", filename="uploads/" + filename)
 
+    # Polymorphism: sends the file straight from the disk as a download.
     def download_response(self, filename, save_as):
         return send_from_directory(self.folder, filename, as_attachment=True, download_name=save_as)
 
+    # File size in bytes, or None if it does not exist.
     def size_of(self, filename):
         path = self._path(filename)
         if path is None or not os.path.isfile(path):
@@ -235,6 +247,7 @@ class SupabaseStorage(FileStorage):
     supports_direct_upload = True
     TIMEOUT = 30
 
+    # Encapsulation: the secret service key is stored privately in _headers and never leaves the server.
     def __init__(self, project_url, service_key, bucket):
         self._base = project_url.rstrip("/") + "/storage/v1"
         self._bucket = bucket
@@ -243,9 +256,11 @@ class SupabaseStorage(FileStorage):
             "apikey": service_key
         }
 
+    # Where the file sits inside the bucket.
     def _object_path(self, filename):
         return f"{self._bucket}/{quote(filename)}"
 
+    # Sends one request to the Supabase Storage API with the secret key attached.
     def _request(self, method, path, **kwargs):
         headers = dict(self._headers, **kwargs.pop("headers", {}))
         try:
@@ -259,6 +274,7 @@ class SupabaseStorage(FileStorage):
         except requests.RequestException as error:
             raise StorageError(f"Supabase Storage is unreachable: {error}") from error
 
+    # Polymorphism: uploads the file to Supabase Storage.
     def write(self, filename, stream, content_type):
         response = self._request(
             "POST",
@@ -274,6 +290,7 @@ class SupabaseStorage(FileStorage):
                 f"Supabase refused {filename}: {response.status_code} {response.text[:200]}"
             )
 
+    # Polymorphism: deletes the file from Supabase Storage.
     def remove(self, filename):
         if not filename:
             return
@@ -284,13 +301,16 @@ class SupabaseStorage(FileStorage):
                 f"Supabase could not delete {filename}: {response.status_code}"
             )
 
+    # Polymorphism: the file's public Supabase address.
     def url(self, filename):
         return f"{self._base}/object/public/{self._object_path(filename)}"
 
+    # Polymorphism: sends the browser to Supabase, which names the downloaded file.
     def download_response(self, filename, save_as):
         # ?download= makes Supabase send the file as an attachment with this name.
         return redirect(f"{self.url(filename)}?{urlencode({'download': save_as})}")
 
+    # Asks Supabase for the file size; None if it is missing.
     def size_of(self, filename):
         response = self._request("GET", f"object/info/{self._object_path(filename)}")
         if response.status_code != 200:
@@ -341,13 +361,16 @@ class IncomingFile(ABC):
 class FormUpload(IncomingFile):
     """A file sent to Flask inside the form (local development, small files)."""
 
+    # Wraps a file that came inside the form.
     def __init__(self, upload):
         self._upload = upload
 
+    # The name the file had on the visitor's computer.
     @property
     def filename(self):
         return self._upload.filename
 
+    # Measures the file by jumping to its end.
     def size(self):
         try:
             self._upload.stream.seek(0, os.SEEK_END)
@@ -357,9 +380,11 @@ class FormUpload(IncomingFile):
             return None
         return size
 
+    # A new random name, so uploads never overwrite each other.
     def stored_name(self, extension):
         return f"{uuid.uuid4().hex}{extension}"
 
+    # Polymorphism: saves the uploaded bytes into storage.
     def store(self, storage, filename):
         self._upload.stream.seek(0)
         storage.write(filename, self._upload.stream, self._upload.mimetype)
@@ -372,21 +397,26 @@ class DirectUpload(IncomingFile):
     name when it signed the upload, so ``store`` only checks it arrived.
     """
 
+    # A file the browser already sent to Supabase; only its names are kept.
     def __init__(self, storage, stored_as, original_name):
         self._storage = storage
         self._stored_as = stored_as
         self._original_name = original_name
 
+    # The name the file had on the visitor's computer.
     @property
     def filename(self):
         return self._original_name
 
+    # Asks storage how big the uploaded file is.
     def size(self):
         return self._storage.size_of(self._stored_as)
 
+    # Flask already chose this name when it signed the upload.
     def stored_name(self, extension):
         return self._stored_as
 
+    # Polymorphism: nothing to save here, it only checks that the file arrived.
     def store(self, storage, filename):
         if storage.size_of(filename) is None:
             raise StorageError(f"The uploaded file is missing: {filename}")
@@ -403,9 +433,11 @@ class IncomingFiles:
     SESSION_KEY = "direct_uploads"
     MAX_REMEMBERED = 40
 
+    # Keeps the storage that direct uploads are checked against.
     def __init__(self, storage):
         self._storage = storage
 
+    # Reads one hidden "<field>__direct" value (JSON); None if it is not valid.
     @staticmethod
     def _parse(raw):
         try:
@@ -414,14 +446,17 @@ class IncomingFiles:
         except (ValueError, KeyError, TypeError):
             return None
 
+    # Notes a storage name this session was allowed to upload.
     def remember(self, stored_as):
         issued = session.get(self.SESSION_KEY, [])
         session[self.SESSION_KEY] = (issued + [stored_as])[-self.MAX_REMEMBERED:]
 
+    # Stops tracking names that are now saved or deleted.
     def forget(self, stored_names):
         issued = session.get(self.SESSION_KEY, [])
         session[self.SESSION_KEY] = [name for name in issued if name not in stored_names]
 
+    # Every file of one form field: sent with the form or uploaded directly.
     def all(self, field):
         files = [
             FormUpload(upload)
@@ -437,10 +472,12 @@ class IncomingFiles:
 
         return files
 
+    # The first file of a field, or None.
     def one(self, field):
         files = self.all(field)
         return files[0] if files else None
 
+    # All direct-upload names in this request that this session was given.
     def _direct_names(self):
         issued = set(session.get(self.SESSION_KEY, []))
         names = []
@@ -538,6 +575,7 @@ class ProjectMediaValidator(UploadValidator):
     MAX_BYTES = 16 * 1024 * 1024
     MAX_FILES = 10
 
+    # Polymorphism: each validator gives its own allowed types, size limit and messages.
     @property
     def extensions(self):
         return self.EXTENSIONS
@@ -577,9 +615,11 @@ class ProfilePictureValidator(UploadValidator):
     EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp"}
     MAX_MB = 10
 
+    # The label makes the messages fit ("hero picture", "profile picture").
     def __init__(self, label="profile picture"):
         self._label = label
 
+    # Polymorphism: each validator gives its own allowed types, size limit and messages.
     @property
     def extensions(self):
         return self.EXTENSIONS
@@ -602,6 +642,7 @@ class CVValidator(UploadValidator):
 
     MAX_MB = 10
 
+    # Polymorphism: a CV must be a PDF of up to 10 MB.
     @property
     def extensions(self):
         return {".pdf"}
@@ -622,6 +663,7 @@ class CVValidator(UploadValidator):
 class CertificatePhotoValidator(ProfilePictureValidator):
     """Certificate photos follow the same image rules as profile pictures."""
 
+    # Inheritance: reuses every rule of ProfilePictureValidator; only the label changes.
     def __init__(self):
         super().__init__("certificate photo")
 
@@ -657,6 +699,7 @@ class Categories:
     # What is being categorized, for messages ("Choose a category for the project.").
     NOUN = "item"
 
+    # Runs when a subclass is created: builds its LABELS from its own CHOICES.
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         cls.LABELS = dict(cls.CHOICES)
@@ -678,14 +721,17 @@ class Categories:
 
         return category, custom, None
 
+    # True when the key is one of this list's categories.
     @classmethod
     def is_valid(cls, key):
         return key in cls.LABELS
 
+    # The label people see for a key ("websites" -> "Websites & Apps").
     @classmethod
     def label(cls, key):
         return cls.LABELS.get(key, cls.LABELS["other"])
 
+    # The admin's own name for an "Other" item, tidied; empty otherwise.
     @staticmethod
     def _custom(project):
         if project.get("category") != "other":
@@ -762,6 +808,7 @@ class ProjectTechnologies:
     as one technology; the label is the first spelling seen.
     """
 
+    # A simple key for one technology ("VS Code" -> "vs-code").
     @staticmethod
     def key(name):
         return re.sub(r"[^a-z0-9+#.]+", "-", name.lower()).strip("-")
@@ -822,6 +869,7 @@ class CoverFraming:
             values[field] = round(min(max(number, low), high), 2)
         return values
 
+    # The saved framing of a project, with defaults for missing values.
     @classmethod
     def of(cls, project):
         return {
@@ -840,8 +888,10 @@ class CoverFraming:
         )
 
 
+# Polymorphism: checks the Add / Edit Project form (a FormValidator).
 class ProjectFormValidator(FormValidator):
 
+    # Returns (clean values, None), or (None, the error to show).
     def validate(self, form):
         title = (form.get("title") or "").strip()
         description = (form.get("description") or "").strip()
@@ -890,6 +940,7 @@ class ProjectFormValidator(FormValidator):
 class SkillParser:
     """Splits a comma-separated skill list, dropping blanks and duplicates."""
 
+    # Splits "HTML, CSS, html" into ["HTML", "CSS"]: no blanks or repeats.
     @staticmethod
     def parse(raw_skills):
         skills = []
@@ -915,6 +966,7 @@ class SkillLevels:
     # What each number of stars means, shown when hovering a skill.
     LABELS = ("Beginner", "Basic", "Intermediate", "Advanced", "Expert")
 
+    # The name of a star level: 4 -> "Advanced".
     @classmethod
     def label(cls, stars):
         return cls.LABELS[stars - 1] if 1 <= stars <= cls.MAX else ""
@@ -960,6 +1012,7 @@ class SkillLevels:
         return json.dumps({skill: stars for skill, stars, _ in cls.ratings(skills, raw) if stars})
 
 
+# Polymorphism: checks the Edit Profile form (a FormValidator).
 class ProfileFormValidator(FormValidator):
     DESCRIPTION_MAX_LENGTH = 3000
     SKILL_MAX_LENGTH = 40
@@ -968,6 +1021,7 @@ class ProfileFormValidator(FormValidator):
     HERO_INTRO_MAX_LENGTH = 600
     FULL_NAME_MAX_LENGTH = 80
 
+    # Cleans every field, checks them, then reads the skill stars.
     def validate(self, form):
         values = {
             "hero_name": " ".join((form.get("hero_name") or "").split()),
@@ -980,6 +1034,7 @@ class ProfileFormValidator(FormValidator):
         values["skill_levels"] = SkillLevels.from_form(form.get("skill_levels"), values["skills"])
         return values, error
 
+    # The first problem found, or None when everything is valid.
     def _first_error(self, hero_name, full_name, hero_intro, description, skills):
         if not hero_name or not hero_intro:
             return "Please fill in the hero name and introduction."
@@ -1011,6 +1066,7 @@ class ProfileFormValidator(FormValidator):
         return None
 
 
+# Polymorphism: checks the Add / Edit Certificate form (a FormValidator).
 class CertificateFormValidator(FormValidator):
     TITLE_MAX_LENGTH = 160
     DESCRIPTION_MAX_LENGTH = 2000
@@ -1020,6 +1076,7 @@ class CertificateFormValidator(FormValidator):
     MAX_SKILLS = 20
     SKILL_MAX_LENGTH = 40
 
+    # Checks each field in turn; the first problem is shown to the admin.
     def validate(self, form):
         title = (form.get("title") or "").strip()
         description = (form.get("description") or "").strip()
@@ -1090,9 +1147,11 @@ class CertificateFormValidator(FormValidator):
         }, None
 
 
+# Polymorphism: checks the contact form visitors send (a FormValidator).
 class ContactFormValidator(FormValidator):
     EMAIL_PATTERN = r"[^@\s]+@[^@\s]+\.[^@\s]+"
 
+    # A name, a valid email and a message are all required.
     def validate(self, form):
         values = {
             "name": (form.get("name") or "").strip(),
@@ -1120,6 +1179,7 @@ class Repository(ABC):
     work for every table.
     """
 
+    # Encapsulation: how to open database connections is kept private.
     def __init__(self, connection_factory):
         self._connection_factory = connection_factory
 
@@ -1128,9 +1188,11 @@ class Repository(ABC):
     def table_name(self):
         """Name of the table this repository reads and writes."""
 
+    # Opens a new database connection.
     def _connect(self):
         return self._connection_factory()
 
+    # Inherited by every repository: all rows of its table.
     def fetch_all(self, cursor, newest_first=False):
         order = "DESC" if newest_first else "ASC"
         cursor.execute(
@@ -1142,6 +1204,7 @@ class Repository(ABC):
         )
         return cursor.fetchall()
 
+    # Inherited by every repository: one row by its id, or None.
     def find_by_id(self, cursor, record_id):
         cursor.execute(
             f"""
@@ -1153,6 +1216,7 @@ class Repository(ABC):
         )
         return cursor.fetchone()
 
+    # Inherited by every repository: how many rows the table has.
     def count(self, cursor):
         cursor.execute(
             f"""
@@ -1174,12 +1238,15 @@ class Repository(ABC):
         return cursor.rowcount
 
 
+# Inheritance: the admins table, plus a lookup by username.
 class AdminRepository(Repository):
 
+    # Abstraction: Repository requires every repository to name its table.
     @property
     def table_name(self):
         return "admins"
 
+    # The admin with this username, or None.
     def find_by_username(self, username):
         username = (username or "").strip()
         if not username:
@@ -1248,8 +1315,10 @@ class CustomCategoryNames:
             connection.close()
 
 
+# Inheritance: the projects table; custom category names come from the CustomCategoryNames mixin.
 class ProjectRepository(CustomCategoryNames, Repository):
 
+    # Abstraction: Repository requires every repository to name its table.
     @property
     def table_name(self):
         return "projects"
@@ -1293,6 +1362,7 @@ class ProjectRepository(CustomCategoryNames, Repository):
         )
         return cursor.fetchone()["id"]
 
+    # Saves the edited project (keeping one spelling for custom categories).
     def update(self, cursor, project_id, values):
         values = dict(values, category_custom=self._consistent_custom_name(
             cursor, values["category_custom"], exclude_id=project_id
@@ -1352,10 +1422,12 @@ class ProjectRepository(CustomCategoryNames, Repository):
 class ProjectMediaRepository(Repository):
     """The gallery files of every project."""
 
+    # Inheritance: runs Repository's __init__, then keeps the storage for file addresses.
     def __init__(self, connection_factory, storage):
         super().__init__(connection_factory)
         self._storage = storage
 
+    # Abstraction: Repository requires every repository to name its table.
     @property
     def table_name(self):
         return "project_media"
@@ -1401,6 +1473,7 @@ class ProjectMediaRepository(Repository):
                 for media in galleries[project["id"]]
             ]
 
+    # Adds new files to a project, in order.
     def insert(self, cursor, project_id, filenames, start_position=0):
         for offset, filename in enumerate(filenames):
             cursor.execute(
@@ -1411,6 +1484,7 @@ class ProjectMediaRepository(Repository):
                 (project_id, filename, start_position + offset)
             )
 
+    # Removes the chosen files from a project.
     def delete_many(self, cursor, project_id, media_ids):
         placeholders = ", ".join(["%s"] * len(media_ids))
         cursor.execute(
@@ -1421,6 +1495,7 @@ class ProjectMediaRepository(Repository):
             (project_id, *media_ids)
         )
 
+    # The position after the project's last file.
     def next_position(self, cursor, project_id):
         cursor.execute(
             """
@@ -1458,10 +1533,12 @@ class ProfileRepository(Repository):
         "skill_levels": {}
     }
 
+    # Abstraction: Repository requires every repository to name its table.
     @property
     def table_name(self):
         return "profile"
 
+    # Reads the profile row and prepares it for the pages (paragraphs, skills, stars).
     def load(self):
         connection = self._connect()
         cursor = connection.cursor()
@@ -1502,6 +1579,7 @@ class ProfileRepository(Repository):
             "skill_levels_json": SkillLevels.as_form_value(skills, row["skill_levels"])
         }
 
+    # Saves the edited profile, pictures, skill stars and CV.
     def update(self, cursor, values, pictures):
         cursor.execute(
             """
@@ -1535,10 +1613,12 @@ class ProfileRepository(Repository):
 class CertificateRepository(CustomCategoryNames, Repository):
     """Certificates shown in the portfolio's Certificates section."""
 
+    # Inheritance: runs Repository's __init__, then keeps the storage for photo addresses.
     def __init__(self, connection_factory, storage):
         super().__init__(connection_factory)
         self._storage = storage
 
+    # Abstraction: Repository requires every repository to name its table.
     @property
     def table_name(self):
         return "certificates"
@@ -1554,6 +1634,7 @@ class CertificateRepository(CustomCategoryNames, Repository):
         )
         return cursor.fetchall()
 
+    # One certificate by id (reuses the inherited find_by_id).
     def find(self, cursor, certificate_id):
         return self.find_by_id(cursor, certificate_id)
 
@@ -1562,6 +1643,7 @@ class CertificateRepository(CustomCategoryNames, Repository):
               "credential_id", "credential_url", "skills", "expires_at",
               "category", "category_custom")
 
+    # Inserts a new certificate.
     def create(self, cursor, values, photo):
         values = dict(values, category_custom=self._consistent_custom_name(
             cursor, values["category_custom"]
@@ -1575,6 +1657,7 @@ class CertificateRepository(CustomCategoryNames, Repository):
             [values[field] for field in self.FIELDS] + [photo]
         )
 
+    # Saves an edited certificate.
     def update(self, cursor, certificate_id, values, photo):
         values = dict(values, category_custom=self._consistent_custom_name(
             cursor, values["category_custom"], exclude_id=certificate_id
@@ -1589,6 +1672,7 @@ class CertificateRepository(CustomCategoryNames, Repository):
             [values[field] for field in self.FIELDS] + [photo, certificate_id]
         )
 
+    # A readable date: "October 22, 2026".
     @staticmethod
     def _label(day):
         return f"{day:%B} {day.day}, {day.year}"
@@ -1632,12 +1716,15 @@ class CertificateRepository(CustomCategoryNames, Repository):
         }
 
 
+# Inheritance: the contact messages table.
 class MessageRepository(Repository):
 
+    # Abstraction: Repository requires every repository to name its table.
     @property
     def table_name(self):
         return "messages"
 
+    # Saves a visitor's message.
     def create(self, cursor, values):
         cursor.execute(
             """
@@ -1665,6 +1752,7 @@ class ContentVersion:
         )) AS version
     """
 
+    # Encapsulation: the connection factory is kept private.
     def __init__(self, connection_factory):
         self._connection_factory = connection_factory
 
@@ -1676,15 +1764,18 @@ class ContentVersion:
         )) AS version
     """
 
+    # The portfolio's current fingerprint (it changes whenever the content changes).
     def read(self, cursor):
         cursor.execute(self.QUERY)
         return cursor.fetchone()["version"]
 
+    # The same, but messages count too (for the dashboard).
     def read_dashboard(self, cursor):
         portfolio = self.QUERY.replace("AS version", "")
         cursor.execute(self.DASHBOARD_QUERY.format(portfolio=portfolio))
         return cursor.fetchone()["version"]
 
+    # Opens a connection and reads the dashboard's fingerprint.
     def current_dashboard(self):
         connection = self._connection_factory()
         cursor = connection.cursor()
@@ -1694,6 +1785,7 @@ class ContentVersion:
             cursor.close()
             connection.close()
 
+    # Opens a connection and reads the portfolio's fingerprint.
     def current(self):
         connection = self._connection_factory()
         cursor = connection.cursor()
@@ -1711,9 +1803,11 @@ class ContentVersion:
 class AuthService:
     """Looks up an admin and checks their password."""
 
+    # Keeps the repository admins are looked up in.
     def __init__(self, admins):
         self._admins = admins
 
+    # The admin when the username and password are right, otherwise None.
     def authenticate(self, username, password):
         admin = self._admins.find_by_username(username)
         if admin and PasswordChecker.matches(admin.get("password"), password):
@@ -1724,6 +1818,7 @@ class AuthService:
 class PortfolioServices:
     """Bundles the repositories, validators and storage the views use."""
 
+    # Creates every repository, validator and storage once; each view receives this one object.
     def __init__(self, flask_app, connection_factory, storage):
         self._connection_factory = connection_factory
         self.logger = flask_app.logger
@@ -1757,6 +1852,7 @@ class PortfolioServices:
             "cv_file": self.cv
         }
 
+    # A new database connection for a view.
     def connect(self):
         return self._connection_factory()
 
@@ -1780,6 +1876,7 @@ class PageView(BaseView, ABC):
     def template_name(self):
         """The Jinja template this page renders."""
 
+    # Polymorphism: each page shows its own template_name.
     def render(self, status=None, **context):
         page = render_template(self.template_name, **context)
         if status is None:
@@ -1791,6 +1888,7 @@ class AdminPageView(PageView):
     """A page only a logged-in admin may open."""
     decorators = [login_required]
 
+    # Overriding: after a failed form, also deletes files uploaded for it, then renders as usual.
     def render(self, status=None, **context):
         # A form that failed keeps none of the files the browser uploaded
         # straight to storage for it; the admin chooses them again.
@@ -1798,6 +1896,7 @@ class AdminPageView(PageView):
             self._services.incoming.discard_unused()
         return super().render(status, **context)
 
+    # Runs the page; after a successful save, stops tracking its uploads.
     def dispatch_request(self, *args, **kwargs):
         response = super().dispatch_request(*args, **kwargs)
         # A redirect after POST means the files were saved.
@@ -1813,9 +1912,11 @@ class AdminActionView(BaseView):
 
 # ---------- Public site ----------
 
+# The public portfolio page (/).
 class HomeView(PageView):
     template_name = "index.html"
 
+    # Loads the projects, certificates and profile, then shows index.html.
     def get(self):
         services = self._services
         connection = services.connect()
@@ -1860,8 +1961,10 @@ class HomeView(PageView):
         )
 
 
+# Receives the contact form (/send-message).
 class SendMessageView(BaseView):
 
+    # Checks the message, saves it, and goes back to the contact section.
     def post(self):
         services = self._services
         values, error = services.contact_form.validate(request.form)
@@ -1896,12 +1999,15 @@ class SendMessageView(BaseView):
 
 # ---------- Login / logout ----------
 
+# The admin login page (/login).
 class LoginView(PageView):
     template_name = "login.html"
 
+    # Shows the login form.
     def get(self):
         return self.render()
 
+    # Checks the username and password, then remembers the admin in the session.
     def post(self):
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
@@ -1919,6 +2025,7 @@ class LoginView(PageView):
 class ContentVersionView(BaseView):
     """Tells open portfolio pages whether the content has changed."""
 
+    # Answers with the portfolio's fingerprint (never cached).
     def get(self):
         response = jsonify(version=self._services.content_version.current())
         response.headers["Cache-Control"] = "no-store"
@@ -1932,6 +2039,7 @@ class DashboardVersionView(BaseView):
     JSON instead of a redirect when logged out, so the page can stop.
     """
 
+    # Admins only: the dashboard's fingerprint.
     def get(self):
         if "admin_id" not in session:
             return jsonify(error="Not logged in."), 401
@@ -1943,6 +2051,7 @@ class DashboardVersionView(BaseView):
 class FaviconView(BaseView):
     """Browsers and link previews ask for /favicon.ico on their own."""
 
+    # Sends the site icon.
     def get(self):
         return send_from_directory(
             os.path.join(os.path.dirname(__file__), "static"),
@@ -1958,10 +2067,12 @@ class CVView(BaseView):
     Stable addresses, so links keep working when the admin uploads a new CV.
     """
 
+    # download=True for /cv/download; one class serves both addresses.
     def __init__(self, services, download=False):
         super().__init__(services)
         self._download = download
 
+    # Opens or downloads the CV; goes back to About when there is none.
     def get(self):
         profile = self._services.profile.load()
         if not profile["cv_file"]:
@@ -1973,8 +2084,10 @@ class CVView(BaseView):
         return redirect(storage.url(profile["cv_file"]))
 
 
+# Logs the admin out (/logout).
 class LogoutView(BaseView):
 
+    # Forgets the login, then shows the login page.
     def get(self):
         session.clear()
         return redirect("/login")
@@ -1982,9 +2095,11 @@ class LogoutView(BaseView):
 
 # ---------- Dashboard ----------
 
+# The admin dashboard (/dashboard). Inheritance: AdminPageView adds the login check.
 class DashboardView(AdminPageView):
     template_name = "dashboard.html"
 
+    # Loads everything the dashboard shows.
     def get(self):
         services = self._services
         connection = services.connect()
@@ -2017,12 +2132,15 @@ class DashboardView(AdminPageView):
 
 # ---------- Projects ----------
 
+# Add Project page (/add-project).
 class AddProjectView(AdminPageView):
     template_name = "add_project.html"
 
+    # Shows the empty form.
     def get(self):
         return self.render(form={})
 
+    # Checks the form, saves the files, then the project; removes the files again if the database fails.
     def post(self):
         services = self._services
         values, error = services.project_form.validate(request.form)
@@ -2077,6 +2195,7 @@ class AddProjectView(AdminPageView):
         return redirect("/dashboard#projects")
 
 
+# Edit Project page (/edit-project/<id>).
 class EditProjectView(AdminPageView):
     template_name = "edit_project.html"
 
@@ -2096,6 +2215,7 @@ class EditProjectView(AdminPageView):
         services.media.attach_galleries(connection, [project])
         return connection, cursor, project
 
+    # Shows the form filled in with the project.
     def get(self, project_id):
         opened = self._open_project(project_id)
         if opened is None:
@@ -2107,6 +2227,7 @@ class EditProjectView(AdminPageView):
 
         return self.render(project=project, form={})
 
+    # Checks the form, adds or removes files and saves the changes; removed files are deleted last.
     def post(self, project_id):
         opened = self._open_project(project_id)
         if opened is None:
@@ -2191,8 +2312,10 @@ class EditProjectView(AdminPageView):
         return redirect("/dashboard#projects")
 
 
+# Deletes a project (/delete-project/<id>).
 class DeleteProjectView(AdminActionView):
 
+    # Deletes the project, then its files from storage.
     def post(self, project_id):
         services = self._services
         connection = services.connect()
@@ -2242,12 +2365,15 @@ class DeleteProjectView(AdminActionView):
 
 # ---------- Profile ----------
 
+# Edit Profile page (/edit-profile).
 class EditProfileView(AdminPageView):
     template_name = "edit_profile.html"
 
+    # Shows the form filled in with the current profile.
     def get(self):
         return self.render(profile=self._services.profile.load(), form={})
 
+    # Checks the form, saves new pictures or CV, saves the profile, then removes replaced files.
     def post(self):
         services = self._services
         profile = services.profile.load()
@@ -2346,12 +2472,15 @@ class EditProfileView(AdminPageView):
 
 # ---------- Certificates ----------
 
+# Add Certificate page (/add-certificate).
 class AddCertificateView(AdminPageView):
     template_name = "add_certificate.html"
 
+    # Shows the empty form.
     def get(self):
         return self.render(form={})
 
+    # Checks the form (a photo is required), saves the photo, then the certificate.
     def post(self):
         services = self._services
         values, error = services.certificate_form.validate(request.form)
@@ -2402,9 +2531,11 @@ class AddCertificateView(AdminPageView):
         return redirect("/dashboard#certificates")
 
 
+# Edit Certificate page (/edit-certificate/<id>).
 class EditCertificateView(AdminPageView):
     template_name = "edit_certificate.html"
 
+    # The certificate, or None.
     def _find(self, certificate_id):
         connection = self._services.connect()
         cursor = connection.cursor()
@@ -2415,11 +2546,13 @@ class EditCertificateView(AdminPageView):
             connection.close()
         return certificate
 
+    # Shows a message and goes back to the dashboard.
     @staticmethod
     def _not_found():
         flash("That certificate could not be found.", "error")
         return redirect("/dashboard#certificates")
 
+    # Shows the form filled in with the certificate.
     def get(self, certificate_id):
         certificate = self._find(certificate_id)
         if not certificate:
@@ -2430,6 +2563,7 @@ class EditCertificateView(AdminPageView):
             form={}
         )
 
+    # Checks the form, saves a new photo if one was chosen, then the certificate.
     def post(self, certificate_id):
         certificate = self._find(certificate_id)
         if not certificate:
@@ -2501,8 +2635,10 @@ class EditCertificateView(AdminPageView):
         return redirect("/dashboard#certificates")
 
 
+# Deletes a certificate (/delete-certificate/<id>).
 class DeleteCertificateView(AdminActionView):
 
+    # Deletes the certificate, then its photo from storage.
     def post(self, certificate_id):
         services = self._services
         connection = services.connect()
@@ -2552,6 +2688,7 @@ class SignUploadView(AdminActionView):
     Flask picks the storage name, so the browser cannot overwrite files.
     """
 
+    # Checks the file's type and size, then gives the browser a one-time upload link.
     def post(self):
         services = self._services
         if not services.storage.supports_direct_upload:
@@ -2584,8 +2721,10 @@ class SignUploadView(AdminActionView):
 
 # ---------- Messages ----------
 
+# Deletes a contact message (/delete-message/<id>).
 class DeleteMessageView(AdminActionView):
 
+    # Deletes the message and shows whether it worked.
     def post(self, message_id):
         services = self._services
         connection = services.connect()
@@ -2642,6 +2781,7 @@ class PortfolioApp:
         ("/dashboard-version", DashboardVersionView, "dashboard_version"),
     )
 
+    # Builds the whole app: settings, storage, services, template helpers and routes.
     def __init__(self, connection_factory=get_db_connection, storage=None):
         self._flask = Flask(__name__)
         self._configure()
@@ -2650,10 +2790,12 @@ class PortfolioApp:
         self._register_template_helpers(storage)
         self._register_routes()
 
+    # Read-only property: the Flask app itself.
     @property
     def flask(self):
         return self._flask
 
+    # The secret key, the upload folder, and secure cookies on Vercel.
     def _configure(self):
         flask_app = self._flask
         # Set FLASK_SECRET_KEY in production. The random fallback is only for
@@ -2680,6 +2822,7 @@ class PortfolioApp:
             )
         return LocalStorage(self._flask)
 
+    # Functions the HTML templates can call, like media_url().
     def _register_template_helpers(self, storage):
         # {{ media_url(name) }} works with either storage.
         self._flask.jinja_env.globals.update(
@@ -2700,6 +2843,7 @@ class PortfolioApp:
             custom_category_names=self._services.projects.custom_category_names
         )
 
+    # Connects every address in ROUTES to its view class.
     def _register_routes(self):
         # A route may add a dict of extra arguments for its view.
         for rule, view_class, endpoint, *options in self.ROUTES:
@@ -2708,6 +2852,7 @@ class PortfolioApp:
                 view_func=view_class.as_view(endpoint, self._services, **(options[0] if options else {}))
             )
 
+    # Starts the local development server.
     def run(self, **options):
         self._flask.run(**options)
 
