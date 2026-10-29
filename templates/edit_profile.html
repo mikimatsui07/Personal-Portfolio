@@ -283,6 +283,49 @@
                     </section>
 
 
+                    <!-- CV -->
+
+                    <section class="form-group media-editor" aria-labelledby="cv-heading">
+
+                        <div class="media-editor-heading">
+                            <label id="cv-heading" for="cv_file">CV</label>
+                            <p>Optional. Visitors get "View CV" and "Download CV" buttons in your About section.</p>
+                        </div>
+
+                        {% if profile.cv_file %}
+                            <a class="cv-current" href="{{ media_url(profile.cv_file) }}" target="_blank" rel="noopener noreferrer">
+                                <span class="cv-current-icon" aria-hidden="true">PDF</span>
+                                <span>Current CV <span aria-hidden="true">↗</span></span>
+                            </a>
+                        {% endif %}
+
+                        <div class="media-upload-row">
+                            <input
+                                type="file"
+                                id="cv_file"
+                                name="cv_file"
+                                accept=".pdf,application/pdf"
+                                aria-describedby="cv-help selected-cv-name"
+                            >
+                            <label class="media-upload-button" for="cv_file">
+                                <span aria-hidden="true">↑</span>
+                                {{ 'Replace CV' if profile.cv_file else 'Upload CV' }}
+                            </label>
+                            <span id="selected-cv-name" class="current-media-name">No new CV selected</span>
+                        </div>
+
+                        {% if profile.cv_file %}
+                            <label class="remove-media-option" for="remove_cv_file">
+                                <input type="checkbox" name="remove_cv_file" id="remove_cv_file">
+                                <span>Remove CV (hides the buttons)</span>
+                            </label>
+                        {% endif %}
+
+                        <small id="cv-help">PDF only. Maximum file size: 10 MB.</small>
+
+                    </section>
+
+
                     <!-- DESCRIPTION -->
 
                     <div class="form-group">
@@ -499,6 +542,30 @@
             "picture", "picture-preview",
             "selected-picture-name", "remove_picture"
         );
+
+        // CV: show the chosen file's name; choosing a file and "Remove" cancel each other.
+        (() => {
+            const input = document.getElementById("cv_file");
+            const selectedName = document.getElementById("selected-cv-name");
+            const removeBox = document.getElementById("remove_cv_file");
+
+            input.addEventListener("change", () => {
+                const file = input.files[0];
+                selectedName.textContent = file ? `New CV: ${file.name}` : "No new CV selected";
+                if (file && removeBox) {
+                    removeBox.checked = false;
+                }
+            });
+
+            if (removeBox) {
+                removeBox.addEventListener("change", () => {
+                    if (removeBox.checked && input.files.length) {
+                        input.value = "";
+                        input.dispatchEvent(new Event("change"));
+                    }
+                });
+            }
+        })();
     </script>
 
 </body>

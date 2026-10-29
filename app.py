@@ -29,7 +29,7 @@ import uuid
 from abc import ABC, abstractmethod
 from datetime import date
 from functools import wraps
-from urllib.parse import quote, urlparse
+from urllib.parse import quote, urlencode, urlparse
 
 import requests
 from flask import (
@@ -139,6 +139,10 @@ class FileStorage(ABC):
         """Size in bytes of a stored file, or None if it does not exist."""
         return None
 
+    def download_response(self, filename, save_as):
+        """A response that makes the browser save ``filename`` as ``save_as``."""
+        return redirect(self.url(filename))
+
     def save_all(self, validated):
         """Store validated uploads; on failure removes what was stored and re-raises.
 
@@ -210,6 +214,9 @@ class LocalStorage(FileStorage):
     def url(self, filename):
         return url_for("static", filename="uploads/" + filename)
 
+    def download_response(self, filename, save_as):
+        return send_from_directory(self.folder, filename, as_attachment=True, download_name=save_as)
+
     def size_of(self, filename):
         path = self._path(filename)
         if path is None or not os.path.isfile(path):
@@ -279,6 +286,10 @@ class SupabaseStorage(FileStorage):
 
     def url(self, filename):
         return f"{self._base}/object/public/{self._object_path(filename)}"
+
+    def download_response(self, filename, save_as):
+        # ?download= makes Supabase send the file as an attachment with this name.
+        return redirect(f"{self.url(filename)}?{urlencode({'download': save_as})}")
 
     def size_of(self, filename):
         response = self._request("GET", f"object/info/{self._object_path(filename)}")
@@ -586,6 +597,28 @@ class ProfilePictureValidator(UploadValidator):
         return f"Your {self._label} must be {self.MAX_MB} MB or smaller."
 
 
+class CVValidator(UploadValidator):
+    """The CV visitors can view and download (a PDF)."""
+
+    MAX_MB = 10
+
+    @property
+    def extensions(self):
+        return {".pdf"}
+
+    @property
+    def max_bytes(self):
+        return self.MAX_MB * 1024 * 1024
+
+    @property
+    def type_error(self):
+        return "Choose a PDF file for your CV."
+
+    @property
+    def size_error(self):
+        return f"Your CV must be {self.MAX_MB} MB or smaller."
+
+
 class CertificatePhotoValidator(ProfilePictureValidator):
     """Certificate photos follow the same image rules as profile pictures."""
 
@@ -675,6 +708,46 @@ class ProjectCategories:
         )
         plain_other = [("other", groups["other"][0], groups["other"][1])] if "other" in groups else []
         return standard + custom + plain_other
+
+
+class ProjectTechnologies:
+    """The technologies typed on projects ("HTML, CSS, PHP"), for the filter.
+
+    Spellings that differ only in case or spacing ("php", "PHP ") count
+    as one technology; the label is the first spelling seen.
+    """
+
+    @staticmethod
+    def key(name):
+        return re.sub(r"[^a-z0-9+#.]+", "-", name.lower()).strip("-")
+
+    @classmethod
+    def of(cls, project):
+        """[(key, label)] of one project, without repeats."""
+        seen = {}
+        for name in (project.get("technologies") or "").split(","):
+            name = " ".join(name.split())
+            key = cls.key(name)
+            if key and key not in seen:
+                seen[key] = name
+        return list(seen.items())
+
+    @classmethod
+    def keys(cls, project):
+        """Space-separated keys, for the card's data-technologies."""
+        return " ".join(key for key, _ in cls.of(project))
+
+    @classmethod
+    def in_use(cls, projects):
+        """[(key, label, count)], most used first, then alphabetically."""
+        groups = {}
+        for project in projects:
+            for key, label in cls.of(project):
+                groups.setdefault(key, [label, 0])[1] += 1
+        return sorted(
+            ((key, label, count) for key, (label, count) in groups.items()),
+            key=lambda group: (-group[2], group[1].lower())
+        )
 
 
 class CoverFraming:
@@ -1259,6 +1332,7 @@ class ProfileRepository(Repository):
             "projects through design."
         ),
         "picture": None,
+        "cv_file": None,
         "skills": "Digital Art, Programming, Speed typist, Graphic Design, Animation"
     }
 
@@ -1274,7 +1348,7 @@ class ProfileRepository(Repository):
             cursor.execute(
                 """
                 SELECT hero_name, full_name, hero_intro, hero_picture,
-                       description, picture, skills
+                       description, picture, skills, cv_file
                 FROM profile
                 WHERE id = 1
                 """
@@ -1298,6 +1372,7 @@ class ProfileRepository(Repository):
                 if paragraph.strip()
             ],
             "picture": row["picture"],
+            "cv_file": row["cv_file"],
             "skills": SkillParser.parse(row["skills"])
         }
 
@@ -1312,6 +1387,7 @@ class ProfileRepository(Repository):
                 description = %s,
                 picture = %s,
                 skills = %s,
+                cv_file = %s,
                 updated_at = now() AT TIME ZONE 'Asia/Manila'
             WHERE id = 1
             """,
@@ -1322,7 +1398,8 @@ class ProfileRepository(Repository):
                 pictures["hero_picture"],
                 values["description"],
                 pictures["picture"],
-                ", ".join(values["skills"])
+                ", ".join(values["skills"]),
+                pictures["cv_file"]
             )
         )
 
@@ -1531,13 +1608,15 @@ class PortfolioServices:
         self.hero_picture = ProfilePictureValidator("hero picture")
         self.about_picture = ProfilePictureValidator()
         self.certificate_photo = CertificatePhotoValidator()
+        self.cv = CVValidator()
 
         # Form field name -> the validator its files must pass.
         self.upload_rules = {
             "media": self.project_media,
             "hero_picture": self.hero_picture,
             "picture": self.about_picture,
-            "photo": self.certificate_photo
+            "photo": self.certificate_photo,
+            "cv_file": self.cv
         }
 
     def connect(self):
@@ -1629,6 +1708,7 @@ class HomeView(PageView):
             projects=projects,
             # Filter buttons: only categories that have projects.
             project_categories=ProjectCategories.in_use(projects),
+            project_technologies=ProjectTechnologies.in_use(projects),
             project_data=project_data,
             certificates=shown_certificates,
             # Everything the certificate viewer needs, sent as JSON.
@@ -1730,6 +1810,27 @@ class FaviconView(BaseView):
             mimetype="image/png",
             max_age=7 * 24 * 60 * 60
         )
+
+
+class CVView(BaseView):
+    """/cv opens the CV in the browser; /cv/download saves it.
+
+    Stable addresses, so links keep working when the admin uploads a new CV.
+    """
+
+    def __init__(self, services, download=False):
+        super().__init__(services)
+        self._download = download
+
+    def get(self):
+        profile = self._services.profile.load()
+        if not profile["cv_file"]:
+            return redirect(url_for("home") + "#about")
+        storage = self._services.storage
+        if self._download:
+            save_as = re.sub(r"[^A-Za-z0-9]+", "-", profile["full_name"]).strip("-") + "-CV.pdf"
+            return storage.download_response(profile["cv_file"], save_as)
+        return redirect(storage.url(profile["cv_file"]))
 
 
 class LogoutView(BaseView):
@@ -2014,7 +2115,8 @@ class EditProfileView(AdminPageView):
         values, error = services.profile_form.validate(request.form)
         uploads = {
             "hero_picture": services.incoming.one("hero_picture"),
-            "picture": services.incoming.one("picture")
+            "picture": services.incoming.one("picture"),
+            "cv_file": services.incoming.one("cv_file")
         }
         new_hero_picture, hero_picture_error = services.hero_picture.validate(
             uploads["hero_picture"]
@@ -2022,7 +2124,8 @@ class EditProfileView(AdminPageView):
         new_picture, picture_error = services.about_picture.validate(
             uploads["picture"]
         )
-        error = error or hero_picture_error or picture_error
+        new_cv, cv_error = services.cv.validate(uploads["cv_file"])
+        error = error or hero_picture_error or picture_error or cv_error
 
         if error:
             return self.render(400, profile=profile, error=error, form=request.form)
@@ -2038,6 +2141,11 @@ class EditProfileView(AdminPageView):
                 new_picture,
                 None if request.form.get("remove_picture") == "on"
                 else profile["picture"]
+            ),
+            "cv_file": (
+                new_cv,
+                None if request.form.get("remove_cv_file") == "on"
+                else profile["cv_file"]
             )
         }
         final_pictures = {
@@ -2058,7 +2166,7 @@ class EditProfileView(AdminPageView):
             return self.render(
                 500,
                 profile=profile,
-                error="The picture could not be saved. Please try again.",
+                error="The file could not be saved. Please try again.",
                 form=request.form
             )
 
@@ -2090,7 +2198,7 @@ class EditProfileView(AdminPageView):
                 try:
                     services.storage.remove(old_name)
                 except OSError:
-                    services.logger.exception("Could not remove old picture: %s", old_name)
+                    services.logger.exception("Could not remove old file: %s", old_name)
 
         flash("Profile updated successfully.", "success")
         return redirect("/dashboard")
@@ -2387,6 +2495,8 @@ class PortfolioApp:
         ("/delete-message/<int:message_id>", DeleteMessageView, "delete_message"),
         ("/upload-url", SignUploadView, "upload_url"),
         ("/logout", LogoutView, "logout"),
+        ("/cv", CVView, "cv"),
+        ("/cv/download", CVView, "cv_download", {"download": True}),
         ("/favicon.ico", FaviconView, "favicon"),
         ("/content-version", ContentVersionView, "content_version"),
         ("/dashboard-version", DashboardVersionView, "dashboard_version"),
@@ -2440,15 +2550,18 @@ class PortfolioApp:
             category_key=ProjectCategories.filter_key,
             # style="{{ cover_style(project) }}" on a .cover-framed box.
             cover_style=CoverFraming.style,
+            # data-technologies="{{ technology_keys(project) }}" on a card.
+            technology_keys=ProjectTechnologies.keys,
             category_choices=ProjectCategories.CHOICES,
             custom_category_names=self._services.projects.custom_category_names
         )
 
     def _register_routes(self):
-        for rule, view_class, endpoint in self.ROUTES:
+        # A route may add a dict of extra arguments for its view.
+        for rule, view_class, endpoint, *options in self.ROUTES:
             self._flask.add_url_rule(
                 rule,
-                view_func=view_class.as_view(endpoint, self._services)
+                view_func=view_class.as_view(endpoint, self._services, **(options[0] if options else {}))
             )
 
     def run(self, **options):

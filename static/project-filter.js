@@ -1,8 +1,9 @@
-// Category filter above the projects on the home page.
-// "All" shows every project; a category button shows only its projects.
-// The choice is kept when live-update.js refreshes the projects.
+// Filters above the projects on the home page: one row of categories and
+// one of technologies. A card shows when it matches both choices ("All"
+// matches everything). The choices are kept when live-update.js refreshes
+// the projects.
 (() => {
-    let current = "all";
+    const chosen = { category: "all", technology: "all" };
 
     function status() {
         let region = document.getElementById("project-filter-status");
@@ -19,21 +20,37 @@
         return region;
     }
 
-    function apply(filter, announce) {
-        const buttons = Array.from(document.querySelectorAll(".project-filter-button"));
-        // A category that no longer has projects falls back to "All".
-        if (!buttons.some(button => button.dataset.filter === filter)) {
-            filter = "all";
-        }
-        current = filter;
+    function buttonsOf(group) {
+        return Array.from(document.querySelectorAll(
+            `[data-filter-group="${group}"] .project-filter-button`
+        ));
+    }
 
-        buttons.forEach(button => {
-            button.setAttribute("aria-pressed", String(button.dataset.filter === filter));
+    function labelOf(button) {
+        return button.firstChild.textContent.trim();
+    }
+
+    function matches(card) {
+        const technologies = (card.dataset.technologies || "").split(" ");
+        return (chosen.category === "all" || card.dataset.category === chosen.category)
+            && (chosen.technology === "all" || technologies.includes(chosen.technology));
+    }
+
+    function apply(announce) {
+        Object.keys(chosen).forEach(group => {
+            const buttons = buttonsOf(group);
+            // A choice that no longer has projects falls back to "All".
+            if (!buttons.some(button => button.dataset.filter === chosen[group])) {
+                chosen[group] = "all";
+            }
+            buttons.forEach(button => {
+                button.setAttribute("aria-pressed", String(button.dataset.filter === chosen[group]));
+            });
         });
 
         let shown = 0;
         document.querySelectorAll(".portfolio-project-card").forEach(card => {
-            const match = filter === "all" || card.dataset.category === filter;
+            const match = matches(card);
             if (match && card.hidden) {
                 card.hidden = false;
                 card.classList.remove("filter-in");
@@ -47,21 +64,32 @@
             }
         });
 
+        const empty = document.getElementById("project-filter-empty");
+        if (empty) {
+            empty.hidden = shown > 0;
+        }
+
         if (announce) {
-            const active = buttons.find(button => button.dataset.filter === filter);
-            const name = filter === "all"
-                ? ""
-                : `${active.firstChild.textContent.trim()} `;
-            status().textContent = `Showing ${shown} ${name}project${shown === 1 ? "" : "s"}`;
+            const names = Object.keys(chosen)
+                .filter(group => chosen[group] !== "all")
+                .map(group => labelOf(buttonsOf(group).find(button => button.dataset.filter === chosen[group])));
+            status().textContent = `Showing ${shown} project${shown === 1 ? "" : "s"}` +
+                (names.length ? `: ${names.join(", ")}` : "");
         }
     }
 
     document.addEventListener("click", event => {
         const button = event.target.closest(".project-filter-button");
-        if (button) {
-            apply(button.dataset.filter, true);
+        const group = button && button.closest("[data-filter-group]");
+        if (group) {
+            chosen[group.dataset.filterGroup] = button.dataset.filter;
+            apply(true);
+        } else if (event.target.closest(".project-filter-reset")) {
+            chosen.category = "all";
+            chosen.technology = "all";
+            apply(true);
         }
     });
 
-    document.addEventListener("portfolio:content-updated", () => apply(current, false));
+    document.addEventListener("portfolio:content-updated", () => apply(false));
 })();
