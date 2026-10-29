@@ -9373,3 +9373,124 @@ button.is-busy {
 [data-theme="dark"] .cv-current:hover {
     color: var(--color-accent);
 }
+
+
+/* =========================================================
+   SKILL STARS
+   How good the admin is at each skill (1-5), set in Edit Profile.
+========================================================= */
+
+/* About section and dashboard: stars after the skill's name */
+.skill-stars {
+    margin-left: 6px;
+    color: #d9c9ea;
+    font-size: 12.5px;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+.skill-stars b {
+    color: var(--color-primary);
+    font-weight: inherit;
+}
+
+[data-theme="dark"] .skill-stars {
+    color: #4a3c5c;
+}
+
+[data-theme="dark"] .skill-stars b {
+    color: var(--color-accent);
+}
+
+/* Edit Profile: a chip with its name, five star buttons and × */
+.skill-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.skill-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 4px 4px 4px 13px;
+    border: 1px solid #d7c5e5;
+    border-radius: 999px;
+    background: var(--color-primary-soft);
+    color: #4e2a78;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.skill-chip-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.skill-chip-stars {
+    display: inline-flex;
+    flex: 0 0 auto;
+}
+
+.skill-star-button,
+.skill-chip-remove {
+    display: inline-grid;
+    width: 26px;
+    height: 26px;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: none;
+    color: #cdb8e2;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.skill-star-button.is-on {
+    color: var(--color-primary);
+}
+
+.skill-star-button:hover,
+.skill-chip-remove:hover {
+    background: rgba(120, 73, 189, 0.12);
+}
+
+.skill-chip-remove {
+    flex: 0 0 auto;
+    color: #7a5a9c;
+    font-size: 18px;
+}
+
+.skill-star-button:focus-visible,
+.skill-chip-remove:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 1px;
+}
+
+@media (max-width: 380px) {
+    .skill-star-button {
+        width: 22px;
+    }
+}
+
+[data-theme="dark"] .skill-chip {
+    border-color: #4a3c5c;
+    background: #2c2338;
+    color: var(--color-ink);
+}
+
+[data-theme="dark"] .skill-star-button {
+    color: #574a69;
+}
+
+[data-theme="dark"] .skill-star-button.is-on {
+    color: var(--color-accent);
+}
+
+[data-theme="dark"] .skill-chip-remove {
+    color: var(--color-muted);
+}

@@ -866,6 +866,53 @@ class SkillParser:
         return skills
 
 
+class SkillLevels:
+    """How good the admin is at each skill: 1 to 5 stars, or none.
+
+    Stored as JSON {skill in lower case: stars}, so renaming "html" to
+    "HTML" keeps its stars. Skills without stars are simply not listed.
+    """
+
+    MAX = 5
+
+    @classmethod
+    def _clean(cls, raw):
+        """{lower-case skill: stars} from JSON text or a dict; bad entries are dropped."""
+        if isinstance(raw, str):
+            try:
+                raw = json.loads(raw or "{}")
+            except ValueError:
+                return {}
+        if not isinstance(raw, dict):
+            return {}
+        return {
+            str(skill).lower(): stars
+            for skill, stars in raw.items()
+            if isinstance(stars, int) and not isinstance(stars, bool) and 1 <= stars <= cls.MAX
+        }
+
+    @classmethod
+    def from_form(cls, raw, skills):
+        """Stars for the skills being saved (stars of removed skills are dropped)."""
+        submitted = cls._clean(raw)
+        return {
+            skill.lower(): submitted[skill.lower()]
+            for skill in skills
+            if skill.lower() in submitted
+        }
+
+    @classmethod
+    def ratings(cls, skills, raw):
+        """[(skill, stars or 0)] in the skills' own order, for the templates."""
+        levels = cls._clean(raw)
+        return [(skill, levels.get(skill.lower(), 0)) for skill in skills]
+
+    @classmethod
+    def as_form_value(cls, skills, raw):
+        """JSON {skill: stars} for Edit Profile's hidden field."""
+        return json.dumps({skill: stars for skill, stars in cls.ratings(skills, raw) if stars})
+
+
 class ProfileFormValidator(FormValidator):
     DESCRIPTION_MAX_LENGTH = 3000
     SKILL_MAX_LENGTH = 40
@@ -882,7 +929,9 @@ class ProfileFormValidator(FormValidator):
             "description": (form.get("description") or "").strip(),
             "skills": SkillParser.parse(form.get("skills"))
         }
-        return values, self._first_error(**values)
+        error = self._first_error(**values)
+        values["skill_levels"] = SkillLevels.from_form(form.get("skill_levels"), values["skills"])
+        return values, error
 
     def _first_error(self, hero_name, full_name, hero_intro, description, skills):
         if not hero_name or not hero_intro:
@@ -1333,7 +1382,8 @@ class ProfileRepository(Repository):
         ),
         "picture": None,
         "cv_file": None,
-        "skills": "Digital Art, Programming, Speed typist, Graphic Design, Animation"
+        "skills": "Digital Art, Programming, Speed typist, Graphic Design, Animation",
+        "skill_levels": {}
     }
 
     @property
@@ -1348,7 +1398,7 @@ class ProfileRepository(Repository):
             cursor.execute(
                 """
                 SELECT hero_name, full_name, hero_intro, hero_picture,
-                       description, picture, skills, cv_file
+                       description, picture, skills, skill_levels, cv_file
                 FROM profile
                 WHERE id = 1
                 """
@@ -1359,6 +1409,7 @@ class ProfileRepository(Repository):
             connection.close()
 
         description = row["description"] or ""
+        skills = SkillParser.parse(row["skills"])
         return {
             "hero_name": row["hero_name"] or self.DEFAULTS["hero_name"],
             "full_name": row["full_name"] or self.DEFAULTS["full_name"],
@@ -1373,7 +1424,10 @@ class ProfileRepository(Repository):
             ],
             "picture": row["picture"],
             "cv_file": row["cv_file"],
-            "skills": SkillParser.parse(row["skills"])
+            "skills": skills,
+            # [(skill, stars)], stars 0 = not rated.
+            "skill_ratings": SkillLevels.ratings(skills, row["skill_levels"]),
+            "skill_levels_json": SkillLevels.as_form_value(skills, row["skill_levels"])
         }
 
     def update(self, cursor, values, pictures):
@@ -1387,6 +1441,7 @@ class ProfileRepository(Repository):
                 description = %s,
                 picture = %s,
                 skills = %s,
+                skill_levels = %s::jsonb,
                 cv_file = %s,
                 updated_at = now() AT TIME ZONE 'Asia/Manila'
             WHERE id = 1
@@ -1399,6 +1454,7 @@ class ProfileRepository(Repository):
                 values["description"],
                 pictures["picture"],
                 ", ".join(values["skills"]),
+                json.dumps(values["skill_levels"]),
                 pictures["cv_file"]
             )
         )

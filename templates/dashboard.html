@@ -237,8 +237,13 @@
                         {% if profile.skills %}
 
                             <div class="project-technologies">
-                                {% for skill in profile.skills %}
-                                    <span>{{ skill }}</span>
+                                {% for skill, stars in profile.skill_ratings %}
+                                    <span>
+                                        {{ skill }}
+                                        {% if stars %}
+                                            <small class="skill-stars" role="img" aria-label="{{ stars }} out of 5 stars"><b>{{ '★' * stars }}</b>{{ '★' * (5 - stars) }}</small>
+                                        {% endif %}
+                                    </span>
                                 {% endfor %}
                             </div>
 

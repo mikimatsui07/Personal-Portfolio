@@ -356,7 +356,8 @@
                         </label>
 
                         <p class="form-help">
-                            Type a skill and press Enter or Add. Separate several with commas. Click a skill to remove it.
+                            Type a skill and press Enter or Add. Separate several with commas.
+                            Click the stars to show how good you are at it (click the same star again to clear), and × to remove it.
                         </p>
 
                         <div class="other-technology">
@@ -380,6 +381,14 @@
                             name="skills"
                             id="skills-field"
                             value="{{ form.get('skills', profile.skills | join(', ')) }}"
+                        >
+
+                        <!-- {"Skill": stars} for the skills that have stars -->
+                        <input
+                            type="hidden"
+                            name="skill_levels"
+                            id="skill-levels-field"
+                            value="{{ form.get('skill_levels', profile.skill_levels_json) }}"
                         >
 
                     </div>
@@ -425,28 +434,89 @@
         const skillEmpty = document.getElementById("skill-empty");
         const skillsField = document.getElementById("skills-field");
 
+        const MAX_STARS = 5;
+        const levelsField = document.getElementById("skill-levels-field");
+
         const skills = [];
+        // Stars per skill, by lower-case name (0 or missing = not rated).
+        const stars = {};
+        try {
+            Object.entries(JSON.parse(levelsField.value || "{}")).forEach(([skill, count]) => {
+                stars[skill.toLowerCase()] = Number(count) || 0;
+            });
+        } catch (error) {
+            // Unreadable value: start with no stars.
+        }
 
         function updateSkills() {
             skillsField.value = skills.join(", ");
+            const rated = {};
+            skills.forEach(skill => {
+                if (stars[skill.toLowerCase()]) {
+                    rated[skill] = stars[skill.toLowerCase()];
+                }
+            });
+            levelsField.value = JSON.stringify(rated);
             skillEmpty.hidden = skills.length > 0;
         }
 
         function renderSkill(skill) {
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "technology-button selected custom-technology";
-            button.setAttribute("aria-label", `Remove ${skill}`);
-            button.textContent = `${skill} ×`;
-            button.addEventListener("click", () => {
+            const key = skill.toLowerCase();
+            const chip = document.createElement("span");
+            chip.className = "skill-chip";
+
+            const name = document.createElement("span");
+            name.className = "skill-chip-name";
+            name.textContent = skill;
+
+            const starGroup = document.createElement("span");
+            starGroup.className = "skill-chip-stars";
+            starGroup.setAttribute("role", "group");
+            starGroup.setAttribute("aria-label", `How good you are at ${skill}`);
+
+            const starButtons = [];
+            function showStars() {
+                starButtons.forEach((button, index) => {
+                    const on = index < (stars[key] || 0);
+                    button.classList.toggle("is-on", on);
+                    button.setAttribute("aria-pressed", String(index + 1 === stars[key]));
+                });
+            }
+            for (let count = 1; count <= MAX_STARS; count++) {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "skill-star-button";
+                button.textContent = "★";
+                button.setAttribute("aria-label", `${count} out of ${MAX_STARS} stars`);
+                button.addEventListener("click", () => {
+                    // Clicking the current rating again clears it.
+                    stars[key] = stars[key] === count ? 0 : count;
+                    showStars();
+                    updateSkills();
+                });
+                starButtons.push(button);
+                starGroup.appendChild(button);
+            }
+            showStars();
+
+            const remove = document.createElement("button");
+            remove.type = "button";
+            remove.className = "skill-chip-remove";
+            remove.setAttribute("aria-label", `Remove ${skill}`);
+            remove.textContent = "×";
+            remove.addEventListener("click", () => {
                 const index = skills.indexOf(skill);
                 if (index !== -1) {
                     skills.splice(index, 1);
                 }
-                button.remove();
+                delete stars[key];
+                chip.remove();
                 updateSkills();
+                skillInput.focus();
             });
-            skillList.appendChild(button);
+
+            chip.append(name, starGroup, remove);
+            skillList.appendChild(chip);
         }
 
         function addSkills(rawValue) {
