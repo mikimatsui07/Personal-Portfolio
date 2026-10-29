@@ -1,56 +1,68 @@
-// Filters above the projects on the home page: one row of categories and
-// one of technologies. A card shows when it matches both choices ("All"
-// matches everything). The choices are kept when live-update.js refreshes
-// the projects.
+// Filter buttons on the home page, for the projects and the certificates.
+//
+// A section marked data-filter-scope holds one or more rows of buttons
+// (data-filter-group="category" or "technology") and the cards they
+// filter (data-filter-item, with data-category / data-technologies).
+// A card shows when it matches the choice in every row ("All" matches
+// everything). The choices are kept when live-update.js refreshes the page.
 (() => {
-    const chosen = { category: "all", technology: "all" };
+    // Section id -> {group: chosen key}
+    const chosen = {};
 
-    function status() {
-        let region = document.getElementById("project-filter-status");
+    const matchers = {
+        category: (card, key) => card.dataset.category === key,
+        technology: (card, key) => (card.dataset.technologies || "").split(" ").includes(key)
+    };
+
+    function choicesOf(scope) {
+        if (!chosen[scope.id]) {
+            chosen[scope.id] = {};
+        }
+        return chosen[scope.id];
+    }
+
+    function status(scope) {
+        const id = `${scope.id}-filter-status`;
+        let region = document.getElementById(id);
         if (!region) {
             region = document.createElement("p");
-            region.id = "project-filter-status";
+            region.id = id;
             region.className = "visually-hidden";
             region.setAttribute("aria-live", "polite");
-            const grid = document.getElementById("project-grid");
-            if (grid) {
-                grid.before(region);
+            const firstCard = scope.querySelector("[data-filter-item]");
+            if (firstCard) {
+                firstCard.parentElement.before(region);
             }
         }
         return region;
-    }
-
-    function buttonsOf(group) {
-        return Array.from(document.querySelectorAll(
-            `[data-filter-group="${group}"] .project-filter-button`
-        ));
     }
 
     function labelOf(button) {
         return button.firstChild.textContent.trim();
     }
 
-    function matches(card) {
-        const technologies = (card.dataset.technologies || "").split(" ");
-        return (chosen.category === "all" || card.dataset.category === chosen.category)
-            && (chosen.technology === "all" || technologies.includes(chosen.technology));
-    }
+    function apply(scope, announce) {
+        const choices = choicesOf(scope);
+        const groups = Array.from(scope.querySelectorAll("[data-filter-group]"));
 
-    function apply(announce) {
-        Object.keys(chosen).forEach(group => {
-            const buttons = buttonsOf(group);
-            // A choice that no longer has projects falls back to "All".
-            if (!buttons.some(button => button.dataset.filter === chosen[group])) {
-                chosen[group] = "all";
+        groups.forEach(group => {
+            const name = group.dataset.filterGroup;
+            const buttons = Array.from(group.querySelectorAll(".project-filter-button"));
+            // A choice that no longer has items falls back to "All".
+            if (!buttons.some(button => button.dataset.filter === choices[name])) {
+                choices[name] = "all";
             }
             buttons.forEach(button => {
-                button.setAttribute("aria-pressed", String(button.dataset.filter === chosen[group]));
+                button.setAttribute("aria-pressed", String(button.dataset.filter === choices[name]));
             });
         });
 
         let shown = 0;
-        document.querySelectorAll(".portfolio-project-card").forEach(card => {
-            const match = matches(card);
+        scope.querySelectorAll("[data-filter-item]").forEach(card => {
+            const match = groups.every(group => {
+                const name = group.dataset.filterGroup;
+                return choices[name] === "all" || matchers[name](card, choices[name]);
+            });
             if (match && card.hidden) {
                 card.hidden = false;
                 card.classList.remove("filter-in");
@@ -64,32 +76,38 @@
             }
         });
 
-        const empty = document.getElementById("project-filter-empty");
+        const empty = scope.querySelector(".project-filter-empty");
         if (empty) {
             empty.hidden = shown > 0;
         }
 
         if (announce) {
-            const names = Object.keys(chosen)
-                .filter(group => chosen[group] !== "all")
-                .map(group => labelOf(buttonsOf(group).find(button => button.dataset.filter === chosen[group])));
-            status().textContent = `Showing ${shown} project${shown === 1 ? "" : "s"}` +
+            const names = groups
+                .filter(group => choices[group.dataset.filterGroup] !== "all")
+                .map(group => labelOf(group.querySelector('.project-filter-button[aria-pressed="true"]')));
+            const noun = scope.id === "certificates" ? "certificate" : "project";
+            status(scope).textContent = `Showing ${shown} ${noun}${shown === 1 ? "" : "s"}` +
                 (names.length ? `: ${names.join(", ")}` : "");
         }
     }
 
     document.addEventListener("click", event => {
+        const scope = event.target.closest("[data-filter-scope]");
+        if (!scope) {
+            return;
+        }
         const button = event.target.closest(".project-filter-button");
         const group = button && button.closest("[data-filter-group]");
         if (group) {
-            chosen[group.dataset.filterGroup] = button.dataset.filter;
-            apply(true);
+            choicesOf(scope)[group.dataset.filterGroup] = button.dataset.filter;
+            apply(scope, true);
         } else if (event.target.closest(".project-filter-reset")) {
-            chosen.category = "all";
-            chosen.technology = "all";
-            apply(true);
+            chosen[scope.id] = {};
+            apply(scope, true);
         }
     });
 
-    document.addEventListener("portfolio:content-updated", () => apply(false));
+    document.addEventListener("portfolio:content-updated", () => {
+        document.querySelectorAll("[data-filter-scope]").forEach(scope => apply(scope, false));
+    });
 })();

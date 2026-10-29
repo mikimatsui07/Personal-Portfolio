@@ -638,26 +638,45 @@ class FormValidator(ABC):
         """Return (values, error message or None)."""
 
 
-class ProjectCategories:
-    """The fixed list of project categories, in display order.
+class Categories:
+    """A fixed list of categories, in display order (inheritance).
 
-    Each project has exactly one. The key is stored in the database;
-    the label is what visitors and the admin see. To add a category,
-    add a line here (existing projects keep theirs).
+    Each item (a project, a certificate) has exactly one. The key is
+    stored in the database; the label is what visitors and the admin
+    see. Subclasses only list their CHOICES (ending with "other"); the
+    methods below work for every list. To add a category, add a line to
+    the subclass (existing items keep theirs).
 
-    A project in "other" may carry its own name (category_custom, e.g.
+    An item in "other" may carry its own name (category_custom, e.g.
     "Photography"); it then shows and filters as that name.
     """
 
-    CHOICES = (
-        ("websites", "Websites & Apps"),
-        ("digital-art", "Digital Art"),
-        ("animation", "Animation"),
-        ("graphic-design", "Graphic Design"),
-        ("other", "Other"),
-    )
+    CHOICES = (("other", "Other"),)
     LABELS = dict(CHOICES)
     CUSTOM_MAX_LENGTH = 40
+    # What is being categorized, for messages ("Choose a category for the project.").
+    NOUN = "item"
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.LABELS = dict(cls.CHOICES)
+
+    @classmethod
+    def from_form(cls, form):
+        """Return (category, custom name, None) or (None, None, error message)."""
+        category = (form.get("category") or "").strip()
+        custom = " ".join((form.get("category_custom") or "").split())
+
+        if not cls.is_valid(category):
+            return None, None, f"Choose a category for the {cls.NOUN}."
+
+        # Only an "Other" item keeps its own category name.
+        if category != "other":
+            custom = ""
+        if len(custom) > cls.CUSTOM_MAX_LENGTH:
+            return None, None, f"The category name must be {cls.CUSTOM_MAX_LENGTH} characters or fewer."
+
+        return category, custom, None
 
     @classmethod
     def is_valid(cls, key):
@@ -708,6 +727,32 @@ class ProjectCategories:
         )
         plain_other = [("other", groups["other"][0], groups["other"][1])] if "other" in groups else []
         return standard + custom + plain_other
+
+
+class ProjectCategories(Categories):
+    """Project categories, matching the admin's skills."""
+
+    NOUN = "project"
+    CHOICES = (
+        ("websites", "Websites & Apps"),
+        ("digital-art", "Digital Art"),
+        ("animation", "Animation"),
+        ("graphic-design", "Graphic Design"),
+        ("other", "Other"),
+    )
+
+
+class CertificateCategories(Categories):
+    """Certificate categories, by topic."""
+
+    NOUN = "certificate"
+    CHOICES = (
+        ("programming", "Programming"),
+        ("web-development", "Web Development"),
+        ("networking", "Networking & IT"),
+        ("design", "Design & Multimedia"),
+        ("other", "Other"),
+    )
 
 
 class ProjectTechnologies:
@@ -803,20 +848,13 @@ class ProjectFormValidator(FormValidator):
         technologies = (form.get("technologies") or "").strip()
         created_at = (form.get("created_at") or "").strip()
         project_link = (form.get("project_link") or "").strip()
-        category = (form.get("category") or "").strip()
-        category_custom = " ".join((form.get("category_custom") or "").split())
 
         if not title or not description or not created_at:
             return None, "Title, description, and project date are required."
 
-        if not ProjectCategories.is_valid(category):
-            return None, "Choose a category for the project."
-
-        # Only an "Other" project keeps its own category name.
-        if category != "other":
-            category_custom = ""
-        if len(category_custom) > ProjectCategories.CUSTOM_MAX_LENGTH:
-            return None, f"The category name must be {ProjectCategories.CUSTOM_MAX_LENGTH} characters or fewer."
+        category, category_custom, category_error = ProjectCategories.from_form(form)
+        if category_error:
+            return None, category_error
 
         if len(title) > 160 or len(description) > 5000:
             return None, "Title must be 160 characters or fewer and description 5,000 characters or fewer."
@@ -995,6 +1033,10 @@ class CertificateFormValidator(FormValidator):
         if not title or not obtained_at:
             return None, "Title and date obtained are required."
 
+        category, category_custom, category_error = CertificateCategories.from_form(form)
+        if category_error:
+            return None, category_error
+
         if len(title) > self.TITLE_MAX_LENGTH:
             return None, f"Title must be {self.TITLE_MAX_LENGTH} characters or fewer."
 
@@ -1042,7 +1084,9 @@ class CertificateFormValidator(FormValidator):
             "credential_id": credential_id,
             "credential_url": credential_url,
             "skills": ", ".join(skills),
-            "expires_at": expires_at or None
+            "expires_at": expires_at or None,
+            "category": category,
+            "category_custom": category_custom
         }, None
 
 
@@ -1154,14 +1198,15 @@ class AdminRepository(Repository):
             connection.close()
 
 
-class ProjectRepository(Repository):
+class CustomCategoryNames:
+    """For repositories whose rows have category and category_custom (a mixin).
 
-    @property
-    def table_name(self):
-        return "projects"
+    Keeps one spelling per "Other" name and lists the names used so far.
+    It relies on the repository's ``table_name`` and ``_connect``, so it is
+    mixed into a Repository subclass: ``class X(CustomCategoryNames, Repository)``.
+    """
 
-    @staticmethod
-    def _consistent_custom_name(cursor, name, exclude_id=None):
+    def _consistent_custom_name(self, cursor, name, exclude_id=None):
         """Reuse the spelling already saved for this "Other" name (any case).
 
         Typing "photography" after "Photography" exists saves "Photography",
@@ -1170,9 +1215,9 @@ class ProjectRepository(Repository):
         if not name:
             return name
         cursor.execute(
-            """
+            f"""
             SELECT category_custom
-            FROM projects
+            FROM {self.table_name}
             WHERE category = 'other'
               AND lower(category_custom) = lower(%s)
               AND id <> %s
@@ -1183,6 +1228,31 @@ class ProjectRepository(Repository):
         )
         row = cursor.fetchone()
         return row["category_custom"] if row else name
+
+    def custom_category_names(self):
+        """Names already used for "Other" items, for the form's suggestions."""
+        connection = self._connect()
+        cursor = connection.cursor()
+        try:
+            cursor.execute(
+                f"""
+                SELECT DISTINCT ON (lower(category_custom)) category_custom AS name
+                FROM {self.table_name}
+                WHERE category = 'other' AND category_custom <> ''
+                ORDER BY lower(category_custom), id
+                """
+            )
+            return [row["name"] for row in cursor.fetchall()]
+        finally:
+            cursor.close()
+            connection.close()
+
+
+class ProjectRepository(CustomCategoryNames, Repository):
+
+    @property
+    def table_name(self):
+        return "projects"
 
     def create(self, cursor, values):
         """Insert a project; returns its new id."""
@@ -1245,24 +1315,6 @@ class ProjectRepository(Repository):
                 project_id
             )
         )
-
-    def custom_category_names(self):
-        """Names already used for "Other" projects, for the form's suggestions."""
-        connection = self._connect()
-        cursor = connection.cursor()
-        try:
-            cursor.execute(
-                """
-                SELECT DISTINCT ON (lower(category_custom)) category_custom AS name
-                FROM projects
-                WHERE category = 'other' AND category_custom <> ''
-                ORDER BY lower(category_custom), id
-                """
-            )
-            return [row["name"] for row in cursor.fetchall()]
-        finally:
-            cursor.close()
-            connection.close()
 
     @staticmethod
     def to_viewer_data(project):
@@ -1469,7 +1521,7 @@ class ProfileRepository(Repository):
         )
 
 
-class CertificateRepository(Repository):
+class CertificateRepository(CustomCategoryNames, Repository):
     """Certificates shown in the portfolio's Certificates section."""
 
     def __init__(self, connection_factory, storage):
@@ -1496,9 +1548,13 @@ class CertificateRepository(Repository):
 
     # Columns written by create/update, besides the photo.
     FIELDS = ("title", "description", "obtained_at", "issuer",
-              "credential_id", "credential_url", "skills", "expires_at")
+              "credential_id", "credential_url", "skills", "expires_at",
+              "category", "category_custom")
 
     def create(self, cursor, values, photo):
+        values = dict(values, category_custom=self._consistent_custom_name(
+            cursor, values["category_custom"]
+        ))
         columns = self.FIELDS + ("photo",)
         cursor.execute(
             f"""
@@ -1509,6 +1565,9 @@ class CertificateRepository(Repository):
         )
 
     def update(self, cursor, certificate_id, values, photo):
+        values = dict(values, category_custom=self._consistent_custom_name(
+            cursor, values["category_custom"], exclude_id=certificate_id
+        ))
         assignments = ", ".join(f"{field} = %s" for field in self.FIELDS + ("photo",))
         cursor.execute(
             f"""
@@ -1538,7 +1597,9 @@ class CertificateRepository(Repository):
             expires_iso=expires.isoformat() if expires else "",
             expires_label=self._label(expires) if expires else "",
             is_expired=bool(expires and expires < date.today()),
-            skill_list=SkillParser.parse(certificate.get("skills"))
+            skill_list=SkillParser.parse(certificate.get("skills")),
+            category_label=CertificateCategories.display_label(certificate),
+            category_key=CertificateCategories.filter_key(certificate)
         )
 
     @staticmethod
@@ -1554,6 +1615,7 @@ class CertificateRepository(Repository):
             "expires": certificate["expires_label"],
             "expired": certificate["is_expired"],
             "skills": certificate["skill_list"],
+            "category": certificate["category_label"],
             "credentialId": certificate.get("credential_id") or "",
             "credentialUrl": certificate.get("credential_url") or ""
         }
@@ -1771,6 +1833,8 @@ class HomeView(PageView):
         return self.render(
             content_version=content_version,
             projects=projects,
+            # Certificate filter buttons (shown when 2+ categories are in use).
+            certificate_categories=CertificateCategories.in_use(shown_certificates),
             # Filter buttons: only categories that have projects.
             project_categories=ProjectCategories.in_use(projects),
             project_technologies=ProjectTechnologies.in_use(projects),
@@ -2618,6 +2682,8 @@ class PortfolioApp:
             # data-technologies="{{ technology_keys(project) }}" on a card.
             technology_keys=ProjectTechnologies.keys,
             category_choices=ProjectCategories.CHOICES,
+            certificate_category_choices=CertificateCategories.CHOICES,
+            certificate_custom_category_names=self._services.certificates.custom_category_names,
             # Names of the star levels, for Edit Profile's star buttons.
             skill_level_labels=SkillLevels.LABELS,
             custom_category_names=self._services.projects.custom_category_names

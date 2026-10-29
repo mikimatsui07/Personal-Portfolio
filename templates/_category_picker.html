@@ -1,10 +1,18 @@
 {#
-    Project category (one per project), used by Add and Edit Project.
-    Uses: form (submitted values), project (when editing).
-    The list itself is ProjectCategories in app.py.
+    Category picker (one category per item), used by the project and
+    certificate forms. Uses: form (submitted values) and, set before the
+    include (projects are the default):
+      picker_item         - the project / certificate being edited, if any
+      picker_choices      - (key, label) list: ProjectCategories or CertificateCategories
+      picker_suggestions  - "Other" names used so far
+      picker_help         - the line under the heading
 #}
-{% set chosen_category = form.get('category', project.category if project else '') %}
-{% set chosen_custom = form.get('category_custom', project.category_custom if project else '') %}
+{% set picker_item = picker_item if picker_item is defined else project %}
+{% set picker_choices = picker_choices if picker_choices is defined else category_choices %}
+{% set picker_suggestions = picker_suggestions if picker_suggestions is defined else custom_category_names() %}
+{% set picker_help = picker_help if picker_help is defined else "Where this project appears when visitors filter your portfolio." %}
+{% set chosen_category = form.get('category', picker_item.category if picker_item else '') %}
+{% set chosen_custom = form.get('category_custom', picker_item.category_custom if picker_item else '') %}
 
 <fieldset class="form-group category-picker">
 
@@ -12,10 +20,10 @@
         Category
     </legend>
 
-    <p class="form-help">Where this project appears when visitors filter your portfolio.</p>
+    <p class="form-help">{{ picker_help }}</p>
 
     <div class="category-options">
-        {% for key, label in category_choices %}
+        {% for key, label in picker_choices %}
             <label class="category-option">
                 <input
                     type="radio"
@@ -48,7 +56,7 @@
             value="{{ chosen_custom }}"
         >
 
-        {% set suggestions = custom_category_names() %}
+        {% set suggestions = picker_suggestions %}
         <datalist id="category-suggestions">
             {% for name in suggestions %}
                 <option value="{{ name }}"></option>

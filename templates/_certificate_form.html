@@ -98,6 +98,15 @@
         </div>
 
 
+        <!-- CATEGORY (the list is CertificateCategories in app.py) -->
+
+        {% set picker_item = certificate %}
+        {% set picker_choices = certificate_category_choices %}
+        {% set picker_suggestions = certificate_custom_category_names() %}
+        {% set picker_help = "How this certificate is grouped when visitors filter your certificates." %}
+        {% include "_category_picker.html" %}
+
+
         <!-- ISSUED BY -->
 
         <div class="form-group">

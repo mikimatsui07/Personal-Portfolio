@@ -533,6 +533,7 @@
                                             Obtained
                                             <time datetime="{{ certificate.obtained_iso }}">{{ certificate.obtained_label }}</time>
                                         </span>
+                                        <span class="category-tag">{{ certificate.category_label }}</span>
                                         {% if certificate.expires_label %}
                                             <span class="certificate-status{% if certificate.is_expired %} is-expired{% endif %}">
                                                 {{ 'Expired' if certificate.is_expired else 'Valid until' }} {{ certificate.expires_label }}

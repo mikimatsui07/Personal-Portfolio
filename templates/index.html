@@ -237,6 +237,7 @@
     <section
         id="projects"
         class="portfolio-section projects-section"
+        data-filter-scope
     >
 
         <div class="section-heading">
@@ -284,7 +285,7 @@
 
             </div>
 
-            <p class="project-filter-empty" id="project-filter-empty" hidden>
+            <p class="project-filter-empty" hidden>
                 No projects match both filters.
                 <button type="button" class="project-filter-reset">Show all projects</button>
             </p>
@@ -302,6 +303,7 @@
 
                     <article
                         class="portfolio-project-card"
+                        data-filter-item
                         data-project-index="{{ loop.index0 }}"
                         data-category="{{ category_key(project) }}"
                         data-technologies="{{ technology_keys(project) }}"
@@ -511,6 +513,7 @@
     <section
         id="certificates"
         class="portfolio-section certificates-section"
+        data-filter-scope
     >
 
         <div class="section-heading">
@@ -526,6 +529,24 @@
         </div>
 
 
+        {% if certificate_categories | length > 1 %}
+            <!-- CATEGORY FILTER (static/project-filter.js), when certificates span 2+ categories -->
+            <div class="project-filters">
+                <div class="project-filter" role="group" aria-labelledby="certificate-filter-label" data-filter-group="category">
+                    <span class="project-filter-label" id="certificate-filter-label">Category</span>
+                    <button type="button" class="project-filter-button" data-filter="all" aria-pressed="true">
+                        All <span class="project-filter-count">{{ certificates | length }}</span>
+                    </button>
+                    {% for key, label, count in certificate_categories %}
+                        <button type="button" class="project-filter-button" data-filter="{{ key }}" aria-pressed="false">
+                            {{ label }} <span class="project-filter-count">{{ count }}</span>
+                        </button>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+
         {% if certificates %}
 
             <div class="certificate-grid">
@@ -535,6 +556,8 @@
                     <article
                         class="certificate-card"
                         data-certificate-index="{{ loop.index0 }}"
+                        data-filter-item
+                        data-category="{{ certificate.category_key }}"
                     >
 
                         <!-- PHOTO (opens the certificate viewer) -->
@@ -557,6 +580,7 @@
 
                             <p class="portfolio-project-date certificate-dates">
                                 <time datetime="{{ certificate.obtained_iso }}">{{ certificate.obtained_label }}</time>
+                                <span class="category-tag">{{ certificate.category_label }}</span>
                                 {% if certificate.is_expired %}
                                     <span class="certificate-status is-expired">Expired</span>
                                 {% endif %}
@@ -635,7 +659,10 @@
 
             <div class="viewer-info">
 
-                <p class="portfolio-project-date certificate-dates" id="cert-viewer-dates"></p>
+                <p class="portfolio-project-date certificate-dates">
+                    <span id="cert-viewer-dates"></span>
+                    <span class="category-tag" id="cert-viewer-category"></span>
+                </p>
 
                 <h3 id="cert-viewer-title"></h3>
 

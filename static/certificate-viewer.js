@@ -53,6 +53,10 @@
             dates.append(status);
         }
 
+        const category = byId("cert-viewer-category");
+        category.textContent = certificate.category || "";
+        category.hidden = !certificate.category;
+
         byId("cert-viewer-title").textContent = certificate.title;
 
         const issuer = byId("cert-viewer-issuer");

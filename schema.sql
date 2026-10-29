@@ -84,6 +84,10 @@ ALTER TABLE certificates ADD COLUMN IF NOT EXISTS credential_id VARCHAR(120) NOT
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS credential_url VARCHAR(2048) NOT NULL DEFAULT '';
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS skills TEXT NOT NULL DEFAULT '';
 ALTER TABLE certificates ADD COLUMN IF NOT EXISTS expires_at DATE;
+-- Added later: one category per certificate (CertificateCategories in
+-- app.py), with the admin's own name for "Other", like projects.
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS category VARCHAR(40) NOT NULL DEFAULT 'other';
+ALTER TABLE certificates ADD COLUMN IF NOT EXISTS category_custom VARCHAR(40) NOT NULL DEFAULT '';
 
 -- Contact form messages. Times are stored in Philippine time, like XAMPP did.
 CREATE TABLE IF NOT EXISTS messages (
