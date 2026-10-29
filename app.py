@@ -874,6 +874,12 @@ class SkillLevels:
     """
 
     MAX = 5
+    # What each number of stars means, shown when hovering a skill.
+    LABELS = ("Beginner", "Basic", "Intermediate", "Advanced", "Expert")
+
+    @classmethod
+    def label(cls, stars):
+        return cls.LABELS[stars - 1] if 1 <= stars <= cls.MAX else ""
 
     @classmethod
     def _clean(cls, raw):
@@ -903,14 +909,17 @@ class SkillLevels:
 
     @classmethod
     def ratings(cls, skills, raw):
-        """[(skill, stars or 0)] in the skills' own order, for the templates."""
+        """[(skill, stars or 0, label)] in the skills' own order, for the templates."""
         levels = cls._clean(raw)
-        return [(skill, levels.get(skill.lower(), 0)) for skill in skills]
+        return [
+            (skill, levels.get(skill.lower(), 0), cls.label(levels.get(skill.lower(), 0)))
+            for skill in skills
+        ]
 
     @classmethod
     def as_form_value(cls, skills, raw):
         """JSON {skill: stars} for Edit Profile's hidden field."""
-        return json.dumps({skill: stars for skill, stars in cls.ratings(skills, raw) if stars})
+        return json.dumps({skill: stars for skill, stars, _ in cls.ratings(skills, raw) if stars})
 
 
 class ProfileFormValidator(FormValidator):
@@ -1425,7 +1434,7 @@ class ProfileRepository(Repository):
             "picture": row["picture"],
             "cv_file": row["cv_file"],
             "skills": skills,
-            # [(skill, stars)], stars 0 = not rated.
+            # [(skill, stars, label)], stars 0 = not rated.
             "skill_ratings": SkillLevels.ratings(skills, row["skill_levels"]),
             "skill_levels_json": SkillLevels.as_form_value(skills, row["skill_levels"])
         }
@@ -2609,6 +2618,8 @@ class PortfolioApp:
             # data-technologies="{{ technology_keys(project) }}" on a card.
             technology_keys=ProjectTechnologies.keys,
             category_choices=ProjectCategories.CHOICES,
+            # Names of the star levels, for Edit Profile's star buttons.
+            skill_level_labels=SkillLevels.LABELS,
             custom_category_names=self._services.projects.custom_category_names
         )
 

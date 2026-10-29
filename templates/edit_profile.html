@@ -372,7 +372,12 @@
                             </button>
                         </div>
 
-                        <div class="technology-buttons skill-list" id="skill-list" aria-live="polite"></div>
+                        <div
+                            class="technology-buttons skill-list"
+                            id="skill-list"
+                            aria-live="polite"
+                            data-level-labels="{{ skill_level_labels | list | tojson | forceescape }}"
+                        ></div>
 
                         <p class="skill-empty" id="skill-empty">No skills added yet.</p>
 
@@ -435,6 +440,8 @@
         const skillsField = document.getElementById("skills-field");
 
         const MAX_STARS = 5;
+        // "Beginner" ... "Expert" (SkillLevels.LABELS in app.py).
+        const LEVEL_LABELS = JSON.parse(skillList.dataset.levelLabels);
         const levelsField = document.getElementById("skill-levels-field");
 
         const skills = [];
@@ -487,7 +494,8 @@
                 button.type = "button";
                 button.className = "skill-star-button";
                 button.textContent = "★";
-                button.setAttribute("aria-label", `${count} out of ${MAX_STARS} stars`);
+                button.setAttribute("aria-label", `${count} out of ${MAX_STARS} stars: ${LEVEL_LABELS[count - 1]}`);
+                button.title = LEVEL_LABELS[count - 1];
                 button.addEventListener("click", () => {
                     // Clicking the current rating again clears it.
                     stars[key] = stars[key] === count ? 0 : count;

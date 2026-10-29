@@ -184,13 +184,16 @@
 
                     <div class="about-skills">
 
-                        {% for skill, stars in profile.skill_ratings %}
-                            <span>
-                                {{ skill }}
-                                {% if stars %}
-                                    <small class="skill-stars" role="img" aria-label="{{ stars }} out of 5 stars"><b>{{ '★' * stars }}</b>{{ '★' * (5 - stars) }}</small>
-                                {% endif %}
-                            </span>
+                        {% for skill, stars, level in profile.skill_ratings %}
+                            {% if stars %}
+                                <!-- Hover or tap shows the level ("Advanced"); see .skill-rated in style.css -->
+                                <span class="skill-rated" data-level="{{ level }}" tabindex="0">
+                                    {{ skill }}
+                                    <small class="skill-stars" role="img" aria-label="{{ stars }} out of 5 stars, {{ level }}"><b>{{ '★' * stars }}</b>{{ '★' * (5 - stars) }}</small>
+                                </span>
+                            {% else %}
+                                <span>{{ skill }}</span>
+                            {% endif %}
                         {% endfor %}
 
                     </div>
