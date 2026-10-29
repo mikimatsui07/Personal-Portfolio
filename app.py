@@ -1254,6 +1254,17 @@ class ProjectRepository(CustomCategoryNames, Repository):
     def table_name(self):
         return "projects"
 
+    def fetch_latest(self, cursor):
+        """All projects, most recent project date first (like certificates)."""
+        cursor.execute(
+            """
+            SELECT *
+            FROM projects
+            ORDER BY created_at DESC, id DESC
+            """
+        )
+        return cursor.fetchall()
+
     def create(self, cursor, values):
         """Insert a project; returns its new id."""
         values = dict(values, category_custom=self._consistent_custom_name(
@@ -1813,7 +1824,7 @@ class HomeView(PageView):
         # Read first: if something changes while the page is being built,
         # the page holds the older fingerprint and live-update.js refreshes.
         content_version = services.content_version.read(cursor)
-        projects = services.projects.fetch_all(cursor, newest_first=True)
+        projects = services.projects.fetch_latest(cursor)
         certificates = services.certificates.fetch_latest(cursor)
 
         cursor.close()
@@ -1981,7 +1992,7 @@ class DashboardView(AdminPageView):
 
         # Read first, like the home page: dashboard-live.js compares it.
         dashboard_version = services.content_version.read_dashboard(cursor)
-        projects = services.projects.fetch_all(cursor, newest_first=True)
+        projects = services.projects.fetch_latest(cursor)
         message_count = services.messages.count(cursor)
         messages = services.messages.fetch_all(cursor)
         certificates = services.certificates.fetch_latest(cursor)
